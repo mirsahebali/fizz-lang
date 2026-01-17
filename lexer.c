@@ -35,7 +35,7 @@ String read_number(Lexer *l) {
 }
 
 void skip_whitespace(Lexer *l) {
-  if (l->ch == ' ' || l->ch == '\t' || l->ch == '\n' || l->ch == '\r') {
+  while (l->ch == ' ' || l->ch == '\t' || l->ch == '\n' || l->ch == '\r') {
     read_char(l);
   }
 }
@@ -108,6 +108,7 @@ Token next_token(Lexer *l) {
     } else if (is_digit(l->ch)) {
       t.literal = read_number(l);
       t.type = INT;
+      return t;
     } else {
       t = Token_from_char(ILLEGAL, l->ch);
     }

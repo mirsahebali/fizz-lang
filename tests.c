@@ -31,12 +31,12 @@ int main() {
 }
 
 void test_token_scanning(void) {
-  const char *input = "let a = 10;"
-                      "let b = 5;"
-                      "let add = fn(a, b){"
+  const char *input = "let a = 10; "
+                      "let b = 5; "
+                      "let add = fn(a, b){ "
                       "return a + b; "
-                      "};"
-                      "let result = add(a, b);";
+                      "}; "
+                      "let result = add(a, b); ";
 
   Lexer *l = Lexer_new(String_from(input));
 
@@ -62,7 +62,7 @@ void test_token_scanning(void) {
       {LET, String_from("let")},      {IDENT, String_from("result")},
       {ASSIGN, String_from("=")},     {IDENT, String_from("add")},
       {LPAREN, String_from("(")},     {IDENT, String_from("a")},
-      {PLUS, String_from(",")},       {IDENT, String_from("b")},
+      {COMMA, String_from(",")},      {IDENT, String_from("b")},
       {RPAREN, String_from(")")},     {SEMICOLON, String_from(";")},
   };
 
@@ -170,4 +170,7 @@ void test_string_substr(void) {
   String expected = String_from("llo, ");
 
   assert(cmp_str(&substr, &expected));
+  free_string(&expected);
+  free_string(&substr);
+  free_string(&input);
 }
