@@ -68,14 +68,6 @@ void test_token_scanning(void) {
 
   for (int i = 0; i < (sizeof(expected) / sizeof(Token)); i++) {
     Token t = next_token(l);
-    printf("i = %d\n", i);
-    printf("expected[i].type = %d\n", expected[i].type);
-    printf("expected[i].literal = %s\n", expected[i].literal.chars);
-    printf("strlen(expected[i].literal.chars) = %d\n",
-           strlen(expected[i].literal.chars));
-    printf("t.type = %d\n", t.type);
-    printf("t.literal = %s\n", t.literal.chars);
-    printf("strlen(t.literal.chars) = %d\n", strlen(t.literal.chars));
     assert(expected[i].type == t.type);
     assert(cmp_str(&expected[i].literal, &t.literal));
     free_string(&t.literal);
