@@ -1,0 +1,41 @@
+let name = "Hornet";
+let age = 9;
+let result = 10 * (20 + 2);
+echo(result);
+let array = [11, 23, 43, 61];
+
+let someMap = {"name": "Shakra", "height": 9};
+
+array[2]; // 43
+someMap["name"]; // Shakra
+
+// binding function names with let
+let add = fn(a, b) { return a + b; };
+
+// implicit return without 'return' keyword
+let add = fn(a, b) { a + b; };
+
+add(11, 58);
+
+// complex functions with recursion
+let fibonacci = fn(x){
+  if (x == 0) {
+    0
+  } else {
+    if (x == 1) { 
+      1
+    } else { 
+      fibonacci(x - 1) + fibonacci(x - 2);
+    }
+  }
+};
+
+let twice = fn(f, x){
+  return f(f(x));
+}
+
+let addFive = fn(x){
+  return x + 5;
+}
+
+twice(addFive, 10); // outputs: 15
