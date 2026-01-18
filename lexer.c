@@ -6,6 +6,60 @@
 #include "lexer.h"
 #include "utils.h"
 
+const char *token_type_to_string(TokenType tt) {
+  switch (tt) {
+
+  case ILLEGAL:
+    return "ILLEGAL";
+  case IDENT:
+    return "IDENT";
+  case INT:
+    return "INT";
+  case ASSIGN:
+    return "ASSIGN";
+  case PLUS:
+    return "PLUS";
+  case MINUS:
+    return "MINUS";
+  case COMMA:
+    return "COMMA";
+  case SEMICOLON:
+    return "SEMICOLON";
+  case LPAREN:
+    return "LPAREN";
+  case RPAREN:
+    return "RPAREN";
+  case LBRACE:
+    return "LBRACE";
+  case RBRACE:
+    return "RBRACE";
+  case FUNCTION:
+    return "FUNCTION";
+  case LET:
+    return "LET";
+  case IF:
+    return "IF";
+  case ELSE:
+    return "ELSE";
+  case RETURN:
+    return "RETURN";
+  case TRUE:
+    return "TRUE";
+  case FALSE:
+    return "FALSE";
+  case FOR:
+    return "FOR";
+  case EOF_T:
+    return "EOF_T";
+
+  case BANG:
+    return "BANG";
+
+  default:
+    return "ILLEGAL";
+  }
+}
+
 void read_char(Lexer *l) {
   if (l->read_position >= l->input.length) {
     l->ch = '\0';
@@ -16,13 +70,21 @@ void read_char(Lexer *l) {
   l->read_position++;
 }
 
-String read_itentifier(Lexer *l) {
+String read_ident(Lexer *l) {
   int32_t position = l->position;
   while (is_letter(l->ch)) {
     read_char(l);
   }
 
   return substr_range(&l->input, position, l->position - position);
+}
+
+char peek_char(Lexer *l) {
+  if (l->read_position >= l->input.length) {
+    return 0;
+  }
+
+  return char_at_str(&l->input, l->read_position);
 }
 
 String read_number(Lexer *l) {
@@ -57,14 +119,11 @@ Token Token_from_char(TokenType type, char ch) {
   return (Token){type, str_from_char(ch)};
 }
 TokenType lookup_ident(String *literal) {
-  if (strcmp(literal->chars, "fn") == 0) {
-    return FUNCTION;
+  for (size_t i = 0; i < sizeof(keywords_map) / sizeof(KeywordsMap); i++) {
+    if (strcmp(literal->chars, keywords_map[i].literal) == 0) {
+      return keywords_map[i].type;
+    }
   }
-
-  if (strcmp(literal->chars, "let") == 0) {
-    return LET;
-  }
-
   return IDENT;
 }
 
@@ -74,7 +133,11 @@ Token next_token(Lexer *l) {
   skip_whitespace(l);
   switch (l->ch) {
   case '=':
-    t = Token_from_char(ASSIGN, l->ch);
+    if (peek_char(l) == '=') {
+      read_char(l);
+      t = (Token){EQ, String_from("==")};
+    } else
+      t = Token_from_char(ASSIGN, l->ch);
     break;
   case '+':
     t = Token_from_char(PLUS, l->ch);
@@ -84,6 +147,26 @@ Token next_token(Lexer *l) {
     break;
   case ',':
     t = Token_from_char(COMMA, l->ch);
+    break;
+  case '/':
+    t = Token_from_char(SLASH, l->ch);
+    break;
+  case '*':
+    t = Token_from_char(ASTERISK, l->ch);
+    break;
+  case '<':
+    t = Token_from_char(LT, l->ch);
+    break;
+  case '>':
+    t = Token_from_char(GT, l->ch);
+    break;
+  case '!':
+    if (peek_char(l) == '=') {
+      read_char(l);
+      t = (Token){NOT_EQ, String_from("!=")};
+    } else {
+      t = Token_from_char(BANG, l->ch);
+    }
     break;
   case '(':
     t = Token_from_char(LPAREN, l->ch);
@@ -102,7 +185,7 @@ Token next_token(Lexer *l) {
     break;
   default:
     if (is_letter(l->ch)) {
-      t.literal = read_itentifier(l);
+      t.literal = read_ident(l);
       t.type = lookup_ident(&t.literal);
       return t;
     } else if (is_digit(l->ch)) {

@@ -41,37 +41,133 @@ void test_token_scanning(void) {
   Lexer *l = Lexer_new(String_from(input));
 
   Token expected[] = {
-      {LET, String_from("let")},      {IDENT, String_from("a")},
-      {ASSIGN, String_from("=")},     {INT, String_from("10")},
+      {LET, String_from("let")},       {IDENT, String_from("a")},
+      {ASSIGN, String_from("=")},      {INT, String_from("10")},
       {SEMICOLON, String_from(";")},
 
-      {LET, String_from("let")},      {IDENT, String_from("b")},
-      {ASSIGN, String_from("=")},     {INT, String_from("5")},
+      {LET, String_from("let")},       {IDENT, String_from("b")},
+      {ASSIGN, String_from("=")},      {INT, String_from("5")},
       {SEMICOLON, String_from(";")},
 
-      {LET, String_from("let")},      {IDENT, String_from("add")},
-      {ASSIGN, String_from("=")},     {FUNCTION, String_from("fn")},
-      {LPAREN, String_from("(")},     {IDENT, String_from("a")},
-      {COMMA, String_from(",")},      {IDENT, String_from("b")},
-      {RPAREN, String_from(")")},     {LBRACE, String_from("{")},
-      {IDENT, String_from("return")}, {IDENT, String_from("a")},
-      {PLUS, String_from("+")},       {IDENT, String_from("b")},
-      {SEMICOLON, String_from(";")},  {RBRACE, String_from("}")},
+      {LET, String_from("let")},       {IDENT, String_from("add")},
+      {ASSIGN, String_from("=")},      {FUNCTION, String_from("fn")},
+      {LPAREN, String_from("(")},      {IDENT, String_from("a")},
+      {COMMA, String_from(",")},       {IDENT, String_from("b")},
+      {RPAREN, String_from(")")},      {LBRACE, String_from("{")},
+      {RETURN, String_from("return")}, {IDENT, String_from("a")},
+      {PLUS, String_from("+")},        {IDENT, String_from("b")},
+      {SEMICOLON, String_from(";")},   {RBRACE, String_from("}")},
       {SEMICOLON, String_from(";")},
 
-      {LET, String_from("let")},      {IDENT, String_from("result")},
-      {ASSIGN, String_from("=")},     {IDENT, String_from("add")},
-      {LPAREN, String_from("(")},     {IDENT, String_from("a")},
-      {COMMA, String_from(",")},      {IDENT, String_from("b")},
-      {RPAREN, String_from(")")},     {SEMICOLON, String_from(";")},
+      {LET, String_from("let")},       {IDENT, String_from("result")},
+      {ASSIGN, String_from("=")},      {IDENT, String_from("add")},
+      {LPAREN, String_from("(")},      {IDENT, String_from("a")},
+      {COMMA, String_from(",")},       {IDENT, String_from("b")},
+      {RPAREN, String_from(")")},      {SEMICOLON, String_from(";")},
   };
 
-  for (int i = 0; i < (sizeof(expected) / sizeof(Token)); i++) {
+  for (size_t i = 0; i < (sizeof(expected) / sizeof(Token)); i++) {
     Token t = next_token(l);
+    printf("i = %d\n", i);
+    printf("expected[i].type = %d\n", expected[i].type);
+    printf("expected[i].literal = %s\n", expected[i].literal.chars);
+    printf("strlen(expected[i].literal.chars) = %d\n",
+           strlen(expected[i].literal.chars));
+    printf("t.type = %d\n", t.type);
+    printf("t.literal = %s\n", t.literal.chars);
+    printf("strlen(t.literal.chars) = %d\n", strlen(t.literal.chars));
     assert(expected[i].type == t.type);
     assert(cmp_str(&expected[i].literal, &t.literal));
     free_string(&t.literal);
     free_string(&expected[i].literal);
+  }
+
+  for (size_t i = 0; i < sizeof(expected) / sizeof(Token); i++) {
+    free_token(&expected[i]);
+  }
+
+  free_lexer(l);
+
+  const char *input1 = "let five = 5;"
+                       "let ten = 10;"
+                       "let add = fn(x, y) {"
+                       "return x + y;"
+                       "};"
+                       "let result = add(five, ten);"
+                       "!-/*5;"
+                       "5 < 10 > 5;"
+                       "if (5 < 10) {"
+                       "return true;"
+                       "} else {"
+                       "return false;"
+                       "}"
+                       "10 == 10;"
+                       "10 != 9;";
+
+  l = Lexer_new(String_from(input1));
+
+  Token expected1[] = {
+      {LET, String_from("let")},       {IDENT, String_from("five")},
+      {ASSIGN, String_from("=")},      {INT, String_from("5")},
+      {SEMICOLON, String_from(";")},
+
+      {LET, String_from("let")},       {IDENT, String_from("ten")},
+      {ASSIGN, String_from("=")},      {INT, String_from("10")},
+      {SEMICOLON, String_from(";")},
+
+      {LET, String_from("let")},       {IDENT, String_from("add")},
+      {ASSIGN, String_from("=")},      {FUNCTION, String_from("fn")},
+      {LPAREN, String_from("(")},      {IDENT, String_from("x")},
+      {COMMA, String_from(",")},       {IDENT, String_from("y")},
+      {RPAREN, String_from(")")},      {LBRACE, String_from("{")},
+      {RETURN, String_from("return")}, {IDENT, String_from("x")},
+      {PLUS, String_from("+")},        {IDENT, String_from("y")},
+      {SEMICOLON, String_from(";")},   {RBRACE, String_from("}")},
+      {SEMICOLON, String_from(";")},
+
+      {LET, String_from("let")},       {IDENT, String_from("result")},
+      {ASSIGN, String_from("=")},      {IDENT, String_from("add")},
+      {LPAREN, String_from("(")},      {IDENT, String_from("five")},
+      {COMMA, String_from(",")},       {IDENT, String_from("ten")},
+      {RPAREN, String_from(")")},      {SEMICOLON, String_from(";")},
+
+      {BANG, String_from("!")},        {MINUS, String_from("-")},
+      {SLASH, String_from("/")},       {ASTERISK, String_from("*")},
+      {INT, String_from("5")},         {SEMICOLON, String_from(";")},
+
+      {INT, String_from("5")},         {LT, String_from("<")},
+      {INT, String_from("10")},        {GT, String_from(">")},
+      {INT, String_from("5")},         {SEMICOLON, String_from(";")},
+
+      {IF, String_from("if")},         {LPAREN, String_from("(")},
+      {INT, String_from("5")},         {LT, String_from("<")},
+      {INT, String_from("10")},        {RPAREN, String_from(")")},
+      {LBRACE, String_from("{")},      {RETURN, String_from("return")},
+      {TRUE, String_from("true")},     {SEMICOLON, String_from(";")},
+      {RBRACE, String_from("}")},      {ELSE, String_from("else")},
+      {LBRACE, String_from("{")},      {RETURN, String_from("return")},
+      {FALSE, String_from("false")},   {SEMICOLON, String_from(";")},
+      {RBRACE, String_from("}")},
+
+      {INT, String_from("10")},        {EQ, String_from("==")},
+      {INT, String_from("10")},        {SEMICOLON, String_from(";")},
+
+      {INT, String_from("10")},        {NOT_EQ, String_from("!=")},
+      {INT, String_from("9")},         {SEMICOLON, String_from(";")},
+  };
+
+  for (size_t i = 0; i < (sizeof(expected1) / sizeof(Token)); i++) {
+    Token t = next_token(l);
+
+    assert(expected1[i].type == t.type);
+    assert(cmp_str(&expected1[i].literal, &t.literal));
+    free_string(&t.literal);
+    free_token(&t);
+  }
+
+  for (size_t i = 0; i < sizeof(expected1) / sizeof(Token); i++) {
+    free_string(&expected1[i].literal);
+    free_token(&expected1[i]);
   }
   free_lexer(l);
 }
