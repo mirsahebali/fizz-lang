@@ -68,7 +68,9 @@ Token Token_new(TokenType type, String literal);
 Token Token_from_char(TokenType type, char ch);
 TokenType lookup_ident(String *);
 
-Token next_token(Lexer *l);
+Token next_token(Lexer *);
+
+void print_token(Token *);
 
 void free_token(Token *);
 void free_lexer(Lexer *);

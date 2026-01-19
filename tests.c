@@ -8,6 +8,8 @@
 
 #include "lexer.h"
 
+#include "repl.h"
+
 void test_token_scanning(void);
 void test_string_from(void);
 void test_string_concat_char(void);
@@ -16,6 +18,7 @@ void test_string_cmp(void);
 void test_char_at_str(void);
 void test_string_from_char(void);
 void test_string_substr(void);
+void test_start_repl_stdin(void);
 
 int main() {
 
@@ -26,6 +29,7 @@ int main() {
   test_string_from_char();
   test_string_substr();
   test_token_scanning();
+  test_start_repl_stdin();
 
   return 0;
 }
@@ -66,16 +70,11 @@ void test_token_scanning(void) {
       {RPAREN, String_from(")")},      {SEMICOLON, String_from(";")},
   };
 
+  Token t = next_token(l);
+  free_token(&t);
+
   for (size_t i = 0; i < (sizeof(expected) / sizeof(Token)); i++) {
-    Token t = next_token(l);
-    printf("i = %d\n", i);
-    printf("expected[i].type = %d\n", expected[i].type);
-    printf("expected[i].literal = %s\n", expected[i].literal.chars);
-    printf("strlen(expected[i].literal.chars) = %d\n",
-           strlen(expected[i].literal.chars));
-    printf("t.type = %d\n", t.type);
-    printf("t.literal = %s\n", t.literal.chars);
-    printf("strlen(t.literal.chars) = %d\n", strlen(t.literal.chars));
+    t = next_token(l);
     assert(expected[i].type == t.type);
     assert(cmp_str(&expected[i].literal, &t.literal));
     free_string(&t.literal);
@@ -156,13 +155,16 @@ void test_token_scanning(void) {
       {INT, String_from("9")},         {SEMICOLON, String_from(";")},
   };
 
+  Token t1 = next_token(l);
+  free_token(&t1);
   for (size_t i = 0; i < (sizeof(expected1) / sizeof(Token)); i++) {
-    Token t = next_token(l);
 
-    assert(expected1[i].type == t.type);
-    assert(cmp_str(&expected1[i].literal, &t.literal));
-    free_string(&t.literal);
-    free_token(&t);
+    t1 = next_token(l);
+
+    assert(expected1[i].type == t1.type);
+    assert(cmp_str(&expected1[i].literal, &t1.literal));
+    free_string(&t1.literal);
+    free_token(&t1);
   }
 
   for (size_t i = 0; i < sizeof(expected1) / sizeof(Token); i++) {
@@ -170,6 +172,8 @@ void test_token_scanning(void) {
     free_token(&expected1[i]);
   }
   free_lexer(l);
+
+  printf("Lexical Scanning Passed\n");
 }
 
 void test_string_from(void) {
@@ -262,3 +266,5 @@ void test_string_substr(void) {
   free_string(&substr);
   free_string(&input);
 }
+
+void test_start_repl_stdin(void) { start_repl(); }

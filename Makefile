@@ -7,7 +7,7 @@ CFLAGS = -std=$(STD) $(LDFLAGS) -fno-omit-frame-pointer -Wall -Wextra
 
 OUT = build
 # common core files used in main and tests and could be shared
-CORE = utils.c lexer.c
+CORE = utils.c lexer.c repl.c
 
 # main binary building source files
 SRCS = main.c $(CORE)

@@ -109,9 +109,8 @@ Lexer *Lexer_new(String input) {
   lexer->input = input;
   lexer->position = 0;
   lexer->read_position = 0;
-  lexer->ch = '\0';
+  lexer->ch = 0;
 
-  read_char(lexer);
   return lexer;
 }
 
@@ -200,6 +199,11 @@ Token next_token(Lexer *l) {
 
   read_char(l);
   return t;
+}
+
+void print_token(Token *t) {
+  printf("t.type = %s\n", token_type_to_string(t->type));
+  printf("t.literal = %s\n", t->literal.chars);
 }
 
 void free_token(Token *t) {
