@@ -6,60 +6,6 @@
 #include "lexer.h"
 #include "utils.h"
 
-const char *token_type_to_string(TokenType tt) {
-  switch (tt) {
-
-  case ILLEGAL:
-    return "ILLEGAL";
-  case IDENT:
-    return "IDENT";
-  case INT:
-    return "INT";
-  case ASSIGN:
-    return "ASSIGN";
-  case PLUS:
-    return "PLUS";
-  case MINUS:
-    return "MINUS";
-  case COMMA:
-    return "COMMA";
-  case SEMICOLON:
-    return "SEMICOLON";
-  case LPAREN:
-    return "LPAREN";
-  case RPAREN:
-    return "RPAREN";
-  case LBRACE:
-    return "LBRACE";
-  case RBRACE:
-    return "RBRACE";
-  case FUNCTION:
-    return "FUNCTION";
-  case LET:
-    return "LET";
-  case IF:
-    return "IF";
-  case ELSE:
-    return "ELSE";
-  case RETURN:
-    return "RETURN";
-  case TRUE:
-    return "TRUE";
-  case FALSE:
-    return "FALSE";
-  case FOR:
-    return "FOR";
-  case EOF_T:
-    return "EOF_T";
-
-  case BANG:
-    return "BANG";
-
-  default:
-    return "ILLEGAL";
-  }
-}
-
 void read_char(Lexer *l) {
   if (l->read_position >= l->input.length) {
     l->ch = '\0';
@@ -117,6 +63,10 @@ Lexer *Lexer_new(String input) {
 Token Token_from_char(TokenType type, char ch) {
   return (Token){type, str_from_char(ch)};
 }
+
+Token Token_clone(Token *src) {
+  return (Token){src->type, str_clone(&src->literal)};
+}
 TokenType lookup_ident(String *literal) {
   for (size_t i = 0; i < sizeof(keywords_map) / sizeof(KeywordsMap); i++) {
     if (strcmp(literal->chars, keywords_map[i].literal) == 0) {
@@ -134,7 +84,8 @@ Token next_token(Lexer *l) {
   case '=':
     if (peek_char(l) == '=') {
       read_char(l);
-      t = (Token){EQ, String_from("==")};
+      t.type = EQ;
+      t.literal = String_from("==");
     } else
       t = Token_from_char(ASSIGN, l->ch);
     break;
@@ -182,6 +133,9 @@ Token next_token(Lexer *l) {
   case ';':
     t = Token_from_char(SEMICOLON, l->ch);
     break;
+  case '\0':
+    t = Token_from_char(EOF_T, '\0');
+    break;
   default:
     if (is_letter(l->ch)) {
       t.literal = read_ident(l);
@@ -198,6 +152,11 @@ Token next_token(Lexer *l) {
   }
 
   read_char(l);
+
+#ifdef DEBUG_PRINTS
+  print_token(&t);
+#endif /* ifdef DEBUG_PRINTS */
+
   return t;
 }
 
@@ -207,6 +166,8 @@ void print_token(Token *t) {
 }
 
 void free_token(Token *t) {
+  if (t == NULL)
+    return;
   t->type = 0;
   free_string(&t->literal);
 }
@@ -218,4 +179,16 @@ void free_lexer(Lexer *l) {
 
   free_string(&l->input);
   free(l);
+}
+
+const char *token_type_to_string(TokenType tt) {
+  static const char *token_names[] = {
+#define X(token) #token,
+      TOKEN_LIST
+#undef X
+  };
+
+  assert(tt >= 0 && tt <= TOKEN_COUNT);
+
+  return token_names[tt];
 }

@@ -3,11 +3,12 @@ STD = c99
 
 CC = gcc
 LDFLAGS = -fsanitize=address,undefined
-CFLAGS = -std=$(STD) $(LDFLAGS) -fno-omit-frame-pointer -Wall -Wextra
+# INFO: remove -DDEBUG_PRINTS on release 
+CFLAGS = -std=$(STD) $(LDFLAGS) -g -fno-omit-frame-pointer -Wall -Wextra
 
 OUT = build
 # common core files used in main and tests and could be shared
-CORE = utils.c lexer.c repl.c
+CORE = utils.c lexer.c repl.c parser.c ast.c arrays.c
 
 # main binary building source files
 SRCS = main.c $(CORE)
@@ -18,12 +19,12 @@ CORE_OBJS = $(CORE:%.c=$(OUT)/%.o)
 # main binary object files
 OBJS = $(SRCS:%.c=$(OUT)/%.o)
 
-all: $(OUT)/$(PROJECT_NAME)
+all: $(OUT)/$(PROJECT_NAME)-debug
 
 $(OUT):
 	mkdir -p $(OUT)
 
-$(OUT)/$(PROJECT_NAME): $(OUT) $(OBJS)
+$(OUT)/$(PROJECT_NAME)-debug: $(OUT) $(OBJS)
 	$(CC) $(OBJS) -o $@ $(LDFLAGS)
 
 $(OUT)/%.o: %.c
@@ -35,13 +36,16 @@ $(OUT)/tests: $(OUT) $(CORE_OBJS) tests.c
 check: $(OUT)/tests
 
 debug: all
-	gdb ./$(OUT)/$(PROJECT_NAME)
+	gdb ./$(OUT)/$(PROJECT_NAME)-debug
 
 run: all
-	./$(OUT)/$(PROJECT_NAME)
+	./$(OUT)/$(PROJECT_NAME)-debug
 
 test: check
 	./$(OUT)/tests
+
+
+
 
 clean: 
 	rm -rf $(OUT)

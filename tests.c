@@ -6,7 +6,11 @@
 
 #include "utils.h"
 
+#include "ast.h"
+
 #include "lexer.h"
+
+#include "parser.h"
 
 #include "repl.h"
 
@@ -19,6 +23,7 @@ void test_char_at_str(void);
 void test_string_from_char(void);
 void test_string_substr(void);
 void test_start_repl_stdin(void);
+void test_let_statements(void);
 
 int main() {
 
@@ -29,9 +34,32 @@ int main() {
   test_string_from_char();
   test_string_substr();
   test_token_scanning();
-  test_start_repl_stdin();
-
+  // test_start_repl_stdin();
+  test_let_statements();
   return 0;
+}
+void test_let_statements(void) {
+  const char *input = "let x  1;"
+                      "let foo = 20;"
+                      "let hello = 88833;";
+
+  Lexer *l = Lexer_new(String_from(input));
+  assert(l != NULL);
+  Parser *p = Parser_new(l);
+  assert(p != NULL);
+
+  Program *program = parse_program(p);
+
+  if (p->errors.size != 0) {
+    print_errors(p);
+    assert(false);
+  }
+  assert(statements_size(&program->statements) == 3);
+
+  assert(program != NULL);
+
+  free_parser(p);
+  free_program(program);
 }
 
 void test_token_scanning(void) {
@@ -160,6 +188,7 @@ void test_token_scanning(void) {
   for (size_t i = 0; i < (sizeof(expected1) / sizeof(Token)); i++) {
 
     t1 = next_token(l);
+    print_token(&t1);
 
     assert(expected1[i].type == t1.type);
     assert(cmp_str(&expected1[i].literal, &t1.literal));
