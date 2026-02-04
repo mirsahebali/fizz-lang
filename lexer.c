@@ -10,7 +10,7 @@ void read_char(Lexer *l) {
   if (l->read_position >= l->input.length) {
     l->ch = '\0';
   } else {
-    l->ch = char_at_str(&l->input, l->read_position);
+    l->ch = String_char_at(&l->input, l->read_position);
   }
   l->position = l->read_position;
   l->read_position++;
@@ -22,7 +22,7 @@ String read_ident(Lexer *l) {
     read_char(l);
   }
 
-  return substr_range(&l->input, position, l->position - position);
+  return String_substr_range(&l->input, position, l->position - position);
 }
 
 char peek_char(Lexer *l) {
@@ -30,7 +30,7 @@ char peek_char(Lexer *l) {
     return 0;
   }
 
-  return char_at_str(&l->input, l->read_position);
+  return String_char_at(&l->input, l->read_position);
 }
 
 String read_number(Lexer *l) {
@@ -39,7 +39,7 @@ String read_number(Lexer *l) {
     read_char(l);
   }
 
-  return substr_range(&l->input, position, l->position - position);
+  return String_substr_range(&l->input, position, l->position - position);
 }
 
 void skip_whitespace(Lexer *l) {
@@ -61,11 +61,11 @@ Lexer *Lexer_new(String input) {
 }
 
 Token Token_from_char(TokenType type, char ch) {
-  return (Token){type, str_from_char(ch)};
+  return (Token){type, String_from_char(ch)};
 }
 
 Token Token_clone(Token *src) {
-  return (Token){src->type, str_clone(&src->literal)};
+  return (Token){src->type, String_clone(&src->literal)};
 }
 TokenType lookup_ident(String *literal) {
   for (size_t i = 0; i < sizeof(keywords_map) / sizeof(KeywordsMap); i++) {

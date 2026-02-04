@@ -2,7 +2,7 @@ PROJECT_NAME = mirlang
 STD = c99
 
 CC = gcc
-LDFLAGS = -fsanitize=address,undefined
+LDFLAGS = -fsanitize=address,undefined -I./deps/
 # INFO: remove -DDEBUG_PRINTS on release 
 CFLAGS = -std=$(STD) $(LDFLAGS) -g -fno-omit-frame-pointer -Wall -Wextra
 
@@ -20,6 +20,13 @@ CORE_OBJS = $(CORE:%.c=$(OUT)/%.o)
 OBJS = $(SRCS:%.c=$(OUT)/%.o)
 
 all: $(OUT)/$(PROJECT_NAME)-debug
+
+deps:
+	if [ ! -d "deps" ]; then \
+	mkdir -p deps; \
+	cd deps; \
+	git clone https://github.com/mirsahebali/cstring.h; \
+	fi
 
 $(OUT):
 	mkdir -p $(OUT)
@@ -44,10 +51,7 @@ run: all
 test: check
 	./$(OUT)/tests
 
-
-
-
 clean: 
-	rm -rf $(OUT)
+	rm -rf $(OUT) deps
 
-.PHONY: all debug run clean
+.PHONY: all debug run clean deps

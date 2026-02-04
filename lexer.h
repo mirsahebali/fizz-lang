@@ -3,6 +3,8 @@
 
 #include <stdio.h>
 
+#include "cstring.h/cstring.h"
+
 #include "utils.h"
 
 #define TOKEN_LIST                                                             \
@@ -67,7 +69,6 @@ static const KeywordsMap keywords_map[] = {
 };
 
 Lexer *Lexer_new(String input);
-Token Token_new(TokenType type, String literal);
 Token Token_clone(Token *);
 Token Token_from_char(TokenType type, char ch);
 TokenType lookup_ident(String *);

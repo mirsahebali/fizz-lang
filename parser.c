@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "ast.h"
 #include "lexer.h"
 #include "parser.h"
 #include "utils.h"
@@ -83,6 +84,16 @@ String token_literal(Program *p) {
   return String_from("");
 }
 
+String program_string(Program *self) {
+  StringArray arr = string_array_init(4);
+  String out;
+
+  for (int32_t i = 0; i < self->statements.size; i++) {
+  }
+
+  return out;
+}
+
 Program *Program_new(StatementsArray st_array) {
   Program *p = malloc(sizeof(Program));
   p->statements = statements_array_init(10);
@@ -90,7 +101,10 @@ Program *Program_new(StatementsArray st_array) {
   return p;
 }
 
-void free_program(Program *p) { free_statements(&p->statements); }
+void free_program(Program *p) {
+  free_statements(&p->statements);
+  free(p);
+}
 
 Parser *Parser_new(Lexer *l) {
   assert(l != NULL);
@@ -139,6 +153,8 @@ Statement *parse_statement(Parser *self) {
   switch (self->curr_token.type) {
   case LET:
     return (Statement *)parse_let_statement(self);
+  case RETURN:
+    return (Statement *)parse_return_statement(self);
   default:
     return NULL;
   }
@@ -193,7 +209,7 @@ LetStatement *parse_let_statement(Parser *self) {
   }
 
   Identifier *ident = ident_new(Token_clone(&self->curr_token),
-                                str_clone(&self->curr_token.literal));
+                                String_clone(&self->curr_token.literal));
   assert(ident != NULL);
 
   let_st->name = ident;
@@ -213,13 +229,21 @@ LetStatement *parse_let_statement(Parser *self) {
 }
 Identifier *parse_identifier(Parser *self) {
   Identifier *ident = ident_new(Token_clone(&self->curr_token),
-                                str_clone(&self->curr_token.literal));
+                                String_clone(&self->curr_token.literal));
 
   assert(ident != NULL);
   return ident;
 }
 Statement *parse_if_statement(Parser *self) { return NULL; }
-Statement *parse_return_statement(Parser *self) { return NULL; }
+ReturnStatement *parse_return_statement(Parser *self) {
+  ReturnStatement *ret_st = return_st_new(NULL);
+  parser_next_token(self);
+
+  while (!is_parser_curr_token(self, SEMICOLON)) {
+    parser_next_token(self);
+  }
+  return ret_st;
+}
 Expression *parse_expression(Parser *self) {
   if (self->curr_token.type == INT) {
     if (self->peek_token.type == PLUS) {

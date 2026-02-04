@@ -6,40 +6,67 @@
 
 #include "utils.h"
 
-#include "ast.h"
-
 #include "lexer.h"
 
 #include "parser.h"
 
 #include "repl.h"
 
+#define CSTRING_IMPLEMENTATION
+#include <cstring.h/cstring.h>
+
 void test_token_scanning(void);
-void test_string_from(void);
-void test_string_concat_char(void);
-void test_string_concat_str(void);
-void test_string_cmp(void);
-void test_char_at_str(void);
-void test_string_from_char(void);
-void test_string_substr(void);
 void test_start_repl_stdin(void);
 void test_let_statements(void);
+void test_return_statments(void);
+void test_string_parser(void);
 
 int main() {
 
-  test_string_from();
-  test_string_concat_char();
-  test_string_concat_str();
-  test_char_at_str();
-  test_string_from_char();
-  test_string_substr();
   test_token_scanning();
   // test_start_repl_stdin();
   test_let_statements();
+  test_return_statments();
   return 0;
 }
+
+void test_string_parser(void) {
+  StatementsArray statements = statements_array_init(2);
+  Token token = (Token){LET, String_from("let")};
+  Identifier *ident =
+      ident_new((Token){IDENT, String_from("myVar")}, String_from("myVar"));
+  Expression *value = (Expression *)ident_new(
+      (Token){IDENT, String_from("anotherVar")}, String_from("anotherVar"));
+  LetStatement *lt_st = let_statement_new(token, ident, value);
+  statements_push(&statements, (Node *)&lt_st);
+  Program prog = (Program){statements};
+}
+
+void test_return_statments(void) {
+  const char *input = "return 1;"
+                      "return ab;"
+                      "return bc;";
+
+  Lexer *l = Lexer_new(String_from(input));
+
+  assert(l != NULL);
+
+  Parser *p = Parser_new(l);
+  Program *program = parse_program(p);
+
+  if (p->errors.size != 0) {
+    print_errors(p);
+    assert(false);
+  }
+
+  assert(program->statements.size == 3);
+
+  free_parser(p);
+  free_program(program);
+}
+
 void test_let_statements(void) {
-  const char *input = "let x  1;"
+  const char *input = "let x = 1;"
                       "let foo = 20;"
                       "let hello = 88833;";
 
@@ -104,7 +131,7 @@ void test_token_scanning(void) {
   for (size_t i = 0; i < (sizeof(expected) / sizeof(Token)); i++) {
     t = next_token(l);
     assert(expected[i].type == t.type);
-    assert(cmp_str(&expected[i].literal, &t.literal));
+    assert(String_cmp(&expected[i].literal, &t.literal));
     free_string(&t.literal);
     free_string(&expected[i].literal);
   }
@@ -191,7 +218,7 @@ void test_token_scanning(void) {
     print_token(&t1);
 
     assert(expected1[i].type == t1.type);
-    assert(cmp_str(&expected1[i].literal, &t1.literal));
+    assert(String_cmp(&expected1[i].literal, &t1.literal));
     free_string(&t1.literal);
     free_token(&t1);
   }
@@ -203,97 +230,6 @@ void test_token_scanning(void) {
   free_lexer(l);
 
   printf("Lexical Scanning Passed\n");
-}
-
-void test_string_from(void) {
-  String input = String_from("Hello, World");
-  String expected = {"Hello, World", 12};
-
-  assert(strcmp(input.chars, expected.chars) == 0);
-  assert(input.length == expected.length);
-  free_string(&input);
-}
-
-void test_string_concat_char(void) {
-  String test_str = String_from("12345");
-
-  String input = concat_char(&test_str, '6');
-  String expected = String_from("123456");
-  assert(strcmp(input.chars, expected.chars) == 0);
-
-  String input1 = concat_char(&input, '7');
-  String expected1 = String_from("1234567");
-  assert(strcmp(input1.chars, expected1.chars) == 0);
-
-  free_string(&expected1);
-  free_string(&input1);
-  free_string(&expected);
-  free_string(&input);
-  free_string(&test_str);
-}
-
-void test_string_concat_str(void) {
-  String test_str = String_from("Hello");
-  String input = concat_str(&test_str, ", World");
-  String expected = String_from("Hello, World");
-
-  assert(strcmp(input.chars, expected.chars) == 0);
-
-  free_string(&test_str);
-  free_string(&input);
-  free_string(&expected);
-}
-
-void test_string_cmp(void) {
-  String left = String_from("Shawww");
-  String right = String_from("Shawww");
-  assert(cmp_str(&left, &right));
-
-  free_string(&left);
-  free_string(&right);
-  left = String_from("Poshanka");
-  right = String_from("Shawww");
-  assert(!cmp_str(&left, &right));
-
-  free_string(&left);
-  free_string(&right);
-}
-
-void test_char_at_str(void) {
-  String input = String_from("abc123");
-  char out = char_at_str(&input, 0);
-  char expected = 'a';
-  assert(out == expected);
-
-  out = char_at_str(&input, 1);
-  expected = 'b';
-
-  assert(out == expected);
-
-  out = char_at_str(&input, 2);
-  char invalid = 'd';
-
-  assert(out != invalid);
-
-  out = char_at_str(&input, 5);
-  expected = '3';
-
-  assert(out == expected);
-
-  free_string(&input);
-}
-
-void test_string_from_char(void) {}
-
-void test_string_substr(void) {
-  String input = String_from("Hello, World");
-  String substr = substr_range(&input, 2, 5);
-  String expected = String_from("llo, ");
-
-  assert(cmp_str(&substr, &expected));
-  free_string(&expected);
-  free_string(&substr);
-  free_string(&input);
 }
 
 void test_start_repl_stdin(void) { start_repl(); }

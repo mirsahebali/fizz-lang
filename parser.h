@@ -32,7 +32,8 @@ typedef struct Program {
   StatementsArray statements;
 } Program;
 
-String token_literal(Program *);
+String token_literal(Program *self);
+String program_string(Program *self);
 
 typedef struct Parser {
   Lexer *lexer;
@@ -58,7 +59,7 @@ void free_program(Program *);
 LetStatement *parse_let_statement(Parser *self);
 Identifier *parse_identifier(Parser *self);
 Statement *parse_if_statement(Parser *self);
-Statement *parse_return_statement(Parser *self);
+ReturnStatement *parse_return_statement(Parser *self);
 Expression *parse_expression(Parser *self);
 OperatorExpr *parse_operator_expr(Parser *self);
 Expression *parse_integer_literal(Parser *self);
