@@ -169,6 +169,7 @@ void free_token(Token *t) {
   if (t == NULL)
     return;
   t->type = 0;
+
   free_string(&t->literal);
 }
 

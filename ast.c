@@ -1,10 +1,14 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "ast.h"
 #include "lexer.h"
 #include "utils.h"
+
+#include "cstring.h/cstring.h"
+
 #define INT_STR_MAX 20
 
 Identifier *ident_new(Token token, String value) {
@@ -41,7 +45,6 @@ void ident_destroy(Node *self) {
 
   free_token(&ident->token);
   free_string(&ident->value);
-  free(ident);
 
   printf("Identifier destroyed\n");
 }
@@ -77,27 +80,38 @@ String let_statement_string(const Node *self) {
   }
   String name_str = let_st->name->base.vt->token_literal((Node *)let_st->name);
   String eq_str = String_from(" = ");
+  String spc_str = String_from(" ");
   String semicolon = String_from(";");
-  String out = String_join(5, &let_st->token.literal, &name_str, &eq_str,
-                           &value, &semicolon);
+  String *out = String_join(6, &let_st->token.literal, &spc_str, &name_str,
+                            &eq_str, &value, &semicolon);
 
+  String ret = String_clone(out);
+
+  free_string(out);
   free_string(&value);
   free_string(&name_str);
   free_string(&eq_str);
   free_string(&semicolon);
-  return out;
+  free_string(&spc_str);
+
+  free(out);
+
+  return ret;
 }
 
 void let_statement_destroy(Node *self) {
+  if (self == NULL)
+    return;
   LetStatement *let_st = (LetStatement *)self;
-  assert(let_st != NULL);
+
   if (let_st->name != NULL) {
     let_st->name->base.vt->destroy((Node *)let_st->name);
   }
   if (let_st->value != NULL) {
     let_st->value->vt->destroy((Node *)let_st->value);
   }
-  free(let_st);
+  free(let_st->name);
+  free(let_st->value);
   printf("LetStatement destroyed\n");
 }
 
@@ -133,7 +147,7 @@ String operator_expr_token_literal(const Node *self) {
   assert(self != NULL);
   OperatorExpr *op_expr = (OperatorExpr *)self;
 
-  return op_expr->op.literal;
+  return String_clone(&op_expr->op.literal);
 }
 
 String operator_expr_string(const Node *self) { NOT_IMPLEMENTED("") }
@@ -153,30 +167,34 @@ void operator_expr_destroy(Node *self) {
 #endif /* ifdef DEBUG_PRINTS */
 }
 
-IntExpr *int_expr_new(int value) {
+IntExpr *int_expr_new(const int value) {
   IntExpr *int_expr = malloc(sizeof(IntExpr));
   assert(int_expr != NULL);
 
   int_expr->base.vt = &INT_EXPR_VT;
+  int_expr->token = (Token){INT, String_from_int(value)};
   int_expr->value = value;
 
   return int_expr;
 }
 String int_expr_token_literal(const Node *self) {
+  assert(self != NULL);
   IntExpr *int_expr = (IntExpr *)self;
-  char buf[INT_STR_MAX];
-  sprintf(buf, "%d\n", int_expr->value);
-  return String_from(buf);
-}
+  return String_clone(&int_expr->token.literal);
+};
 
-String int_expr_string(const Node *self) { return String_from(""); }
+String int_expr_string(const Node *self) {
+  assert(self != NULL);
+
+  IntExpr *int_expr = (IntExpr *)self;
+
+  return String_clone(&int_expr->token.literal);
+}
 void int_expr_destroy(Node *self) {
   IntExpr *int_expr = (IntExpr *)self;
   assert(int_expr != NULL);
-  free(int_expr);
-#ifdef DEBUG_PRINTS
+  free_token(&int_expr->token);
   printf("IntExpr Destroyed\n");
-#endif /* ifdef DEBUG_PRINTS */
 }
 
 ReturnStatement *return_st_new(const Expression *value) {
@@ -193,8 +211,9 @@ ReturnStatement *return_st_new(const Expression *value) {
 String return_st_token_literal(const Node *self) {
   assert(self != NULL);
   ReturnStatement *ret_st = (ReturnStatement *)self;
+
   assert(ret_st != NULL);
-  return ret_st->token.literal;
+  return String_clone(&ret_st->token.literal);
 }
 
 String return_st_string(const Node *self) {
@@ -203,11 +222,15 @@ String return_st_string(const Node *self) {
 
   ReturnStatement *ret_st = (ReturnStatement *)self;
 
-  String out = String_join(
+  String *out = String_join(
       4, ret_st->base.vt->token_literal((Node *)ret_st), String_from(" "),
       ret_st->value->vt->string(ret_st->value), String_from(";"));
 
-  return out;
+  String ret = String_clone(out);
+  free_string(out);
+  free(out);
+
+  return ret;
 }
 void return_st_destroy(Node *self) {
   assert(self != NULL);
@@ -218,12 +241,11 @@ void return_st_destroy(Node *self) {
     ret_st->value->vt->destroy((Node *)ret_st->value);
   }
   free_token(&ret_st->token);
-  free(ret_st);
   printf("Return Statement destroyed\n");
 }
 
-StatementExpression *expr_st_new(const Token t, const Expression *expr) {
-  StatementExpression *expr_st = malloc(sizeof(StatementExpression));
+ExpressionStatement *expr_st_new(const Token t, const Expression *expr) {
+  ExpressionStatement *expr_st = malloc(sizeof(ExpressionStatement));
   expr_st->base.vt = &EXPR_ST_VT;
   expr_st->token = t;
   expr_st->expr = expr;
@@ -231,7 +253,7 @@ StatementExpression *expr_st_new(const Token t, const Expression *expr) {
 }
 String expr_st_token_literal(const Node *self) {
   assert(self != NULL);
-  StatementExpression *expr_st = (StatementExpression *)self;
+  ExpressionStatement *expr_st = (ExpressionStatement *)self;
   assert(expr_st != NULL);
 
   return expr_st->token.literal;
@@ -243,10 +265,10 @@ String expr_st_string(const Node *self) {
 }
 
 void expr_st_destroy(Node *self) {
-  StatementExpression *st_expr = (StatementExpression *)self;
+  ExpressionStatement *st_expr = (ExpressionStatement *)self;
   assert(st_expr != NULL);
 
   free_token(&st_expr->token);
   st_expr->expr->vt->destroy((Node *)st_expr->expr);
-  free(st_expr);
+  free((Node *)st_expr->expr);
 }

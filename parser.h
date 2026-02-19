@@ -7,6 +7,16 @@
 
 #include "ast.h"
 
+typedef enum Precedence {
+  LOWEST,
+  EQUALS,      // ==
+  LESSGREATER, // > or <
+  SUM,         // +
+  PRODUCT,     // *
+  PREFIX,      // -X or !X
+  FN_CALL,     // someFunction(X)
+} Precedence;
+
 typedef struct StatementsArray {
   int32_t capacity;
   int32_t size;
@@ -33,14 +43,22 @@ typedef struct Program {
 } Program;
 
 String token_literal(Program *self);
-String program_string(Program *self);
+String *program_string(Program *self);
 
-typedef struct Parser {
+typedef struct Parser Parser;
+
+typedef Expression *(*PrefixParseFn)(Parser *self);
+typedef Expression *(*InfixParseFn)(Parser *self, Expression *expr);
+
+struct Parser {
   Lexer *lexer;
   Token curr_token;
   Token peek_token;
   StringArray errors;
-} Parser;
+
+  PrefixParseFn prefix_parse_fns[TOKEN_COUNT];
+  InfixParseFn infix_parse_fns[TOKEN_COUNT];
+};
 
 Parser *Parser_new(Lexer *);
 void free_parser(Parser *);
@@ -48,6 +66,8 @@ void free_parser(Parser *);
 void parser_next_token(Parser *self);
 const StringArray *parser_errors(const Parser *self);
 void peek_error(Parser *self, const TokenType tt);
+void register_prefix(Parser *self, TokenType tt, PrefixParseFn fn);
+void register_infix(Parser *self, TokenType tt, InfixParseFn fn);
 
 Program *parse_program(Parser *self);
 
@@ -60,9 +80,10 @@ LetStatement *parse_let_statement(Parser *self);
 Identifier *parse_identifier(Parser *self);
 Statement *parse_if_statement(Parser *self);
 ReturnStatement *parse_return_statement(Parser *self);
-Expression *parse_expression(Parser *self);
+Expression *parse_expression(Parser *self, Precedence prec);
 OperatorExpr *parse_operator_expr(Parser *self);
-Expression *parse_integer_literal(Parser *self);
+IntExpr *parse_int_expr(Parser *self);
 Expression *parse_grouped_expr(Parser *self);
+ExpressionStatement *parse_expression_statement(Parser *self);
 
 #endif // !PARSER_H

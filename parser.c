@@ -48,7 +48,8 @@ int32_t statements_push(StatementsArray *s, Statement *data) {
 
 Statement *statements_get(StatementsArray *s, int32_t index) {
   assert(s != NULL);
-  assert(index >= 0 && index < s->size);
+  assert(index >= 0);
+  assert(index < s->size);
 
   return s->data[index];
 }
@@ -66,7 +67,8 @@ void free_statements(StatementsArray *s) {
     return;
 
   for (int i = 0; i < s->size; i++) {
-    s->data[i]->vt->destroy(s->data[i]);
+    s->data[i]->vt->destroy((Node *)s->data[i]);
+    free(s->data[i]);
   }
 
   free(s->data);
@@ -84,19 +86,28 @@ String token_literal(Program *p) {
   return String_from("");
 }
 
-String program_string(Program *self) {
+String *program_string(Program *self) {
   StringArray arr = string_array_init(4);
-  String out;
+  String *out = NULL;
 
   for (int32_t i = 0; i < self->statements.size; i++) {
+    Statement *st = statements_get(&self->statements, i);
+    String str = st->vt->string((Node *)st);
+    string_array_push(&arr, str);
+    free_string(&str);
   }
+
+  String sep = String_from("");
+  out = string_array_join(&arr, sep);
+  free_string(&sep);
+  free_string_array(&arr);
 
   return out;
 }
 
 Program *Program_new(StatementsArray st_array) {
   Program *p = malloc(sizeof(Program));
-  p->statements = statements_array_init(10);
+  p->statements = st_array;
 
   return p;
 }
@@ -113,6 +124,9 @@ Parser *Parser_new(Lexer *l) {
   p->peek_token = (Token){ILLEGAL, String_from("")};
   p->curr_token = (Token){ILLEGAL, String_from("")};
   p->errors = string_array_init(1);
+  register_prefix(p, IDENT, (PrefixParseFn)parse_identifier);
+  register_prefix(p, INT, (PrefixParseFn)parse_int_expr);
+
   parser_next_token(p);
   parser_next_token(p);
   return p;
@@ -126,6 +140,13 @@ void peek_error(Parser *self, const TokenType tt) {
       buf, ERROR_STRING_MAX, "expected next token to be %s, got %s instead",
       token_type_to_string(tt), token_type_to_string(self->curr_token.type));
   string_array_push(&self->errors, String_from(buf));
+}
+
+void register_prefix(Parser *self, TokenType tt, PrefixParseFn fn) {
+  self->prefix_parse_fns[tt] = fn;
+}
+void register_infix(Parser *self, TokenType tt, InfixParseFn fn) {
+  self->infix_parse_fns[tt] = fn;
 }
 
 void free_parser(Parser *p) {
@@ -155,6 +176,10 @@ Statement *parse_statement(Parser *self) {
     return (Statement *)parse_let_statement(self);
   case RETURN:
     return (Statement *)parse_return_statement(self);
+  case IDENT:
+    return (Statement *)parse_expression_statement(self);
+  case INT:
+    return (Statement *)parse_int_expr(self);
   default:
     return NULL;
   }
@@ -180,12 +205,11 @@ bool expect_peek(Parser *self, const TokenType t) {
 Program *parse_program(Parser *self) {
   assert(self != NULL);
   Program *program = (Program *)malloc(sizeof(Program));
-  program->statements = statements_array_init(10);
+  program->statements = statements_array_init(1);
 
   assert(program != NULL);
   parser_next_token(self);
 
-  int count = 0;
   while (!is_parser_curr_token(self, EOF_T)) {
     Statement *st = parse_statement(self);
 
@@ -197,7 +221,13 @@ Program *parse_program(Parser *self) {
   return program;
 }
 
-void print_errors(Parser *self) { print_string_array(&self->errors); }
+void print_errors(Parser *self) {
+  if (self->errors.size == 0) {
+    printf("No parser errors found(yet)\n");
+    return;
+  }
+  print_string_array(&self->errors);
+}
 
 LetStatement *parse_let_statement(Parser *self) {
   assert(self != NULL);
@@ -244,32 +274,64 @@ ReturnStatement *parse_return_statement(Parser *self) {
   }
   return ret_st;
 }
-Expression *parse_expression(Parser *self) {
-  if (self->curr_token.type == INT) {
-    if (self->peek_token.type == PLUS) {
-      return (Expression *)parse_operator_expr(self);
-    } else if (self->peek_token.type == SEMICOLON) {
-      return (Expression *)parse_integer_literal(self);
-    }
-  } else if (self->curr_token.type == LPAREN) {
-    return (Expression *)parse_grouped_expr(self);
+Expression *parse_expression(Parser *self, Precedence prec) {
+  PrefixParseFn prefix = self->prefix_parse_fns[self->curr_token.type];
+  if (prefix == NULL) {
+    return NULL;
   }
-  // TODO: add more parsing functions and checks
-  return NULL;
+
+  Expression *left_expr = prefix(self);
+  return left_expr;
+
+  // if (self->curr_token.type == INT) {
+  //   if (self->peek_token.type == PLUS) {
+  //     return (Expression *)parse_operator_expr(self);
+  //   } else if (self->peek_token.type == SEMICOLON) {
+  //     return (Expression *)parse_integer_literal(self);
+  //   }
+  // } else if (self->curr_token.type == LPAREN) {
+  //   return (Expression *)parse_grouped_expr(self);
+  // }
+  // // TODO: add more parsing functions and checks
+  // return NULL;
 }
 OperatorExpr *parse_operator_expr(Parser *self) {
   OperatorExpr *op_expr = (OperatorExpr *)malloc(sizeof(OperatorExpr));
 
   assert(op_expr != NULL);
 
-  op_expr->left = parse_integer_literal(self);
+  op_expr->left = (Expression *)parse_int_expr(self);
   parser_next_token(self);
   op_expr->op = Token_clone(&self->curr_token);
   parser_next_token(self);
-  op_expr->right = parse_expression(self);
+
+  op_expr->right = parse_expression(self, FN_CALL);
 
   return op_expr;
 }
 
-Expression *parse_integer_literal(Parser *self) { return NULL; }
+ExpressionStatement *parse_expression_statement(Parser *self) {
+  ExpressionStatement *stmt = expr_st_new(Token_clone(&self->curr_token), NULL);
+  stmt->expr = parse_expression(self, LOWEST);
+
+  if (is_parser_peek_token(self, SEMICOLON)) {
+    parser_next_token(self);
+  }
+  return stmt;
+}
+
+IntExpr *parse_int_expr(Parser *self) {
+  int32_t value;
+  bool is_success = String_to_int(&self->curr_token.literal, &value);
+  if (!is_success) {
+    String *error_str = String_join(
+        2, String_from("ERROR: converting string to int for value: "),
+        &self->curr_token.literal);
+    string_array_push(&self->errors, String_clone(error_str));
+    free_string(error_str);
+    return NULL;
+  }
+  IntExpr *int_expr = int_expr_new(value);
+  return int_expr;
+}
 Expression *parse_grouped_expr(Parser *self) { return NULL; }

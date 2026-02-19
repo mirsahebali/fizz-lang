@@ -1,9 +1,11 @@
 #include <assert.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "ast.h"
 #include "utils.h"
 
 #include "lexer.h"
@@ -15,11 +17,29 @@
 #define CSTRING_IMPLEMENTATION
 #include <cstring.h/cstring.h>
 
+#define TEST_STARTED printf("`%s` started\n", __FUNCTION__)
+#define TEST_PASSED printf("`%s` passed\n", __FUNCTION__)
+#define TEST_FAILED printf("`%s` failed\n", __FUNCTION__)
+
+#define FN_TEST(test_name, expr)                                               \
+  void test_name(void) {                                                       \
+    TEST_STARTED;                                                              \
+    do {                                                                       \
+      expr;                                                                    \
+    } while (0);                                                               \
+    TEST_PASSED;                                                               \
+  }
+
+void check_parser_errors(Parser *p);
+
 void test_token_scanning(void);
 void test_start_repl_stdin(void);
 void test_let_statements(void);
 void test_return_statments(void);
 void test_string_parser(void);
+void test_parsing_ident_expr(void);
+void test_parsing_int_expr(void);
+void test_parsing_prefix_expr(void);
 
 int main() {
 
@@ -27,22 +47,125 @@ int main() {
   // test_start_repl_stdin();
   test_let_statements();
   test_return_statments();
+  test_string_parser();
+  test_parsing_ident_expr();
+  test_parsing_int_expr();
+
   return 0;
+}
+typedef struct {
+  char *input;
+  char *op;
+  long value;
+} PrefixTest;
+
+void test_integer_literal(Expression *expr, int32_t value);
+
+FN_TEST(test_parsing_prefix_expr, ({
+          PrefixTest input[] = {
+              {"!6;", "!", 6},
+              {"-45;", "-", 45},
+              {"!9999;", "!", 9999},
+          };
+          for (int i = 0; i < 3; i++) {
+            Lexer *l = Lexer_new(String_from(input[i].input));
+            Parser *p = Parser_new(l);
+            Program *program = parse_program(p);
+            assert(program->statements.size != 1);
+            Statement *stmt = statements_get(&program->statements, 0);
+            assert(stmt != NULL);
+            ExpressionStatement *expr_st = (ExpressionStatement *)stmt;
+
+            PrefixExpression *prefix_expr = (PrefixExpression *)expr_st->expr;
+            String op = STR_NEW(input[i].op);
+            assert(String_cmp(&prefix_expr->op, &op));
+            test_integer_literal(prefix_expr->right, input[i].value);
+          }
+        }));
+
+FN_TEST(test_parsing_int_expr, ({
+          const char *input = "5;";
+
+          Lexer *l = Lexer_new(String_from(input));
+          Parser *p = Parser_new(l);
+          Program *program = parse_program(p);
+
+          check_parser_errors(p);
+          assert(program->statements.size == 1);
+
+          Statement *stmt = statements_get(&program->statements, 0);
+          IntExpr *int_expr = (IntExpr *)stmt;
+          assert(int_expr->value == 5);
+          String integer_token_literal =
+              int_expr->base.vt->token_literal((Node *)int_expr);
+
+          String five = STR_NEW("5");
+          assert(String_cmp(&integer_token_literal, &five));
+
+          print_errors(p);
+
+          free_string(&integer_token_literal);
+          free_parser(p);
+          free_program(program);
+        }));
+
+void test_parsing_ident_expr(void) {
+  TEST_STARTED;
+  char *input = "foobar;";
+  Lexer *l = Lexer_new(String_from(input));
+  Parser *p = Parser_new(l);
+  Program *program = parse_program(p);
+
+  check_parser_errors(p);
+
+  Statement *stmt = statements_get(&program->statements, 0);
+  assert(stmt != NULL);
+  ExpressionStatement *expr_st = (ExpressionStatement *)stmt;
+  assert(expr_st != NULL);
+
+  Identifier *ident = (Identifier *)expr_st->expr;
+  String foobar_str = String_from("foobar");
+  assert(String_cmp(&ident->value, &foobar_str));
+  String ident_token_literal_str = ident->base.vt->token_literal((Node *)ident);
+  assert(String_cmp(&ident_token_literal_str, &foobar_str));
+
+  free_string(&foobar_str);
+  free_string(&ident_token_literal_str);
+
+  free_program(program);
+  free_parser(p);
+  TEST_PASSED;
 }
 
 void test_string_parser(void) {
+  TEST_STARTED;
   StatementsArray statements = statements_array_init(2);
-  Token token = (Token){LET, String_from("let")};
+  String let_str = STR_NEW("let");
+  Token token = (Token){
+      LET,
+      let_str,
+  };
   Identifier *ident =
       ident_new((Token){IDENT, String_from("myVar")}, String_from("myVar"));
   Expression *value = (Expression *)ident_new(
       (Token){IDENT, String_from("anotherVar")}, String_from("anotherVar"));
   LetStatement *lt_st = let_statement_new(token, ident, value);
-  statements_push(&statements, (Node *)&lt_st);
+  statements_push(&statements, (Statement *)lt_st);
   Program prog = (Program){statements};
+
+  String *actual = program_string(&prog);
+  String expected = STR_NEW("let myVar = anotherVar;");
+
+  assert(String_cmp(actual, &expected));
+  free_string(actual);
+  free(actual);
+  free_statements(&statements);
+
+  TEST_PASSED;
 }
 
 void test_return_statments(void) {
+  TEST_STARTED;
   const char *input = "return 1;"
                       "return ab;"
                       "return bc;";
@@ -53,6 +176,7 @@ void test_return_statments(void) {
 
   Parser *p = Parser_new(l);
   Program *program = parse_program(p);
+  check_parser_errors(p);
 
   if (p->errors.size != 0) {
     print_errors(p);
@@ -61,11 +185,24 @@ void test_return_statments(void) {
 
   assert(program->statements.size == 3);
 
+  for (int i = 0; i < program->statements.size; i++) {
+    ReturnStatement *ret_st =
+        (ReturnStatement *)statements_get(&program->statements, i);
+    assert(ret_st != NULL);
+    String ret_token_literal = ret_st->base.vt->token_literal((Node *)ret_st);
+    String expected = STR_NEW("return");
+    assert(String_cmp(&ret_token_literal, &expected));
+    free_string(&ret_token_literal);
+  }
+
   free_parser(p);
   free_program(program);
+
+  TEST_PASSED;
 }
 
 void test_let_statements(void) {
+  TEST_STARTED;
   const char *input = "let x = 1;"
                       "let foo = 20;"
                       "let hello = 88833;";
@@ -87,9 +224,11 @@ void test_let_statements(void) {
 
   free_parser(p);
   free_program(program);
+  TEST_PASSED;
 }
 
 void test_token_scanning(void) {
+  TEST_STARTED;
   const char *input = "let a = 10; "
                       "let b = 5; "
                       "let add = fn(a, b){ "
@@ -215,7 +354,6 @@ void test_token_scanning(void) {
   for (size_t i = 0; i < (sizeof(expected1) / sizeof(Token)); i++) {
 
     t1 = next_token(l);
-    print_token(&t1);
 
     assert(expected1[i].type == t1.type);
     assert(String_cmp(&expected1[i].literal, &t1.literal));
@@ -229,7 +367,24 @@ void test_token_scanning(void) {
   }
   free_lexer(l);
 
-  printf("Lexical Scanning Passed\n");
+  TEST_PASSED;
 }
 
-void test_start_repl_stdin(void) { start_repl(); }
+void test_start_repl_stdin(void) {
+  TEST_STARTED;
+  start_repl();
+  TEST_PASSED;
+}
+
+void check_parser_errors(Parser *p) {
+  const StringArray *errors = parser_errors(p);
+  if (errors->size == 0) {
+    return;
+  }
+
+  printf("Parser has %d errors", errors->size);
+  for (int i = 0; i < errors->size; i++) {
+    printf("parser error: %s", string_array_get(&p->errors, i).chars);
+  }
+  assert(false);
+}

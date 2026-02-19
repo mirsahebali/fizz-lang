@@ -2,6 +2,9 @@
 #include "repl.h"
 #include <stdio.h>
 
+#define CSTRING_IMPLEMENTATION
+#include "cstring.h/cstring.h"
+
 int main(void) {
 
   printf("\n-----------------------------------------\n");

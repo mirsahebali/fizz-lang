@@ -22,7 +22,7 @@ void start_repl(void) {
       free_token(&t);
       t = next_token(lx);
 
-    } while (t.type != ILLEGAL);
+    } while (t.type != ILLEGAL && t.type != EOF_T);
 
     free_lexer(lx);
   }

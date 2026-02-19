@@ -89,7 +89,8 @@ static const NodeVT OPERATOR_EXPR_VT = {
 
 typedef struct IntExpr {
   Expression base;
-  int value;
+  Token token;
+  int32_t value;
 } IntExpr;
 
 IntExpr *int_expr_new(int value);
@@ -126,9 +127,9 @@ typedef struct {
   Statement base;
   Token token;
   const Expression *expr;
-} StatementExpression;
+} ExpressionStatement;
 
-StatementExpression *expr_st_new(const Token t, const Expression *value);
+ExpressionStatement *expr_st_new(const Token t, const Expression *value);
 String expr_st_token_literal(const Node *self);
 String expr_st_string(const Node *self);
 void expr_st_destroy(Node *self);
@@ -138,6 +139,29 @@ static const NodeVT EXPR_ST_VT = {
     .token_literal = expr_st_token_literal,
     .string = expr_st_string,
     .destroy = expr_st_destroy,
+};
+
+typedef struct {
+  Expression base;
+  Token token;
+  // Operator
+  String op;
+  /* Should be ideally an integer expression or ident which evaluates to integer
+   * expr */
+  Expression *right;
+} PrefixExpression;
+
+ExpressionStatement *prefix_expr_new(const Token t, const String op,
+                                     const Expression *right);
+String prefix_expr_token_literal(const Node *self);
+String prefix_expr_string(const Node *self);
+void prefix_expr_destroy(Node *self);
+
+static const NodeVT PREFIX_EXPR_VT = {
+    ._t = EXPRESSION,
+    .token_literal = prefix_expr_token_literal,
+    .string = prefix_expr_string,
+    .destroy = prefix_expr_destroy,
 };
 
 #endif // !AST_H
