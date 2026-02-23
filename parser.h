@@ -8,6 +8,7 @@
 #include "ast.h"
 
 typedef enum Precedence {
+  INVALID,
   LOWEST,
   EQUALS,      // ==
   LESSGREATER, // > or <
@@ -16,6 +17,8 @@ typedef enum Precedence {
   PREFIX,      // -X or !X
   FN_CALL,     // someFunction(X)
 } Precedence;
+
+Precedence precedence_map(TokenType);
 
 typedef struct StatementsArray {
   int32_t capacity;
@@ -85,5 +88,8 @@ OperatorExpr *parse_operator_expr(Parser *self);
 IntExpr *parse_int_expr(Parser *self);
 Expression *parse_grouped_expr(Parser *self);
 ExpressionStatement *parse_expression_statement(Parser *self);
+
+PrefixExpression *parse_prefix_expression(Parser *self);
+InfixExpression *parse_infix_expression(Parser *self, Expression *left);
 
 #endif // !PARSER_H

@@ -64,7 +64,7 @@ Token Token_from_char(TokenType type, char ch) {
   return (Token){type, String_from_char(ch)};
 }
 
-Token Token_clone(Token *src) {
+Token Token_clone(const Token *src) {
   return (Token){src->type, String_clone(&src->literal)};
 }
 TokenType lookup_ident(String *literal) {
@@ -166,10 +166,10 @@ void print_token(Token *t) {
 }
 
 void free_token(Token *t) {
-  if (t == NULL)
+  if (t == NULL || t->literal.chars == NULL)
     return;
-  t->type = 0;
 
+  t->type = 0;
   free_string(&t->literal);
 }
 

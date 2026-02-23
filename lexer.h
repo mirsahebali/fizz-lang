@@ -69,7 +69,7 @@ static const KeywordsMap keywords_map[] = {
 };
 
 Lexer *Lexer_new(String input);
-Token Token_clone(Token *);
+Token Token_clone(const Token *);
 Token Token_from_char(TokenType type, char ch);
 TokenType lookup_ident(String *);
 

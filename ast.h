@@ -3,8 +3,6 @@
 
 #include "lexer.h"
 
-#include "utils.h"
-
 typedef enum NodeType { EXPRESSION, STATEMENT } NodeType;
 
 typedef struct Node Node;
@@ -151,8 +149,8 @@ typedef struct {
   Expression *right;
 } PrefixExpression;
 
-ExpressionStatement *prefix_expr_new(const Token t, const String op,
-                                     const Expression *right);
+PrefixExpression *prefix_expr_new(const Token t, const String op,
+                                  Expression *right);
 String prefix_expr_token_literal(const Node *self);
 String prefix_expr_string(const Node *self);
 void prefix_expr_destroy(Node *self);
@@ -162,6 +160,27 @@ static const NodeVT PREFIX_EXPR_VT = {
     .token_literal = prefix_expr_token_literal,
     .string = prefix_expr_string,
     .destroy = prefix_expr_destroy,
+};
+
+typedef struct {
+  Expression base;
+  Token token;
+  Expression *left;
+  String op;
+  Expression *right;
+} InfixExpression;
+
+InfixExpression *infix_expr_new(const Token t, Expression *left,
+                                const String op, Expression *right);
+String infix_expr_token_literal(const Node *self);
+String infix_expr_string(const Node *self);
+void infix_expr_destroy(Node *self);
+
+static const NodeVT INFIX_EXPR_VT = {
+    ._t = EXPRESSION,
+    .token_literal = infix_expr_token_literal,
+    .string = infix_expr_string,
+    .destroy = infix_expr_destroy,
 };
 
 #endif // !AST_H

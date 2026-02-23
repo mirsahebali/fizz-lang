@@ -40,6 +40,7 @@ void test_string_parser(void);
 void test_parsing_ident_expr(void);
 void test_parsing_int_expr(void);
 void test_parsing_prefix_expr(void);
+void test_parsing_infix_expr(void);
 
 int main() {
 
@@ -50,38 +51,93 @@ int main() {
   test_string_parser();
   test_parsing_ident_expr();
   test_parsing_int_expr();
+  test_parsing_prefix_expr();
+  test_parsing_infix_expr();
 
   return 0;
 }
+
+void test_integer_literal(Expression *expr, int32_t value);
+
+typedef struct {
+  char *input;
+  int left_value;
+  char *op;
+  int right_value;
+} InfixTest;
+
+void test_parsing_infix_expr(void) {
+  TEST_STARTED;
+  InfixTest input[] = {{"5 + 5;", 5, "+", 5},   {"6 * 6;", 6, "*", 6},
+                       {"7 - 5;", 7, "-", 5},   {"9 / 3;", 9, "/", 3},
+                       {"3 == 2;", 3, "==", 2}, {"1 != 0;", 1, "!=", 0},
+                       {"8 < 1;", 8, "<", 1}};
+  for (size_t i = 0; i < (sizeof(input) / sizeof(input[0])); i++) {
+    InfixTest expected = input[i];
+    Lexer *l = Lexer_new(String_from(expected.input));
+    Parser *p = Parser_new(l);
+
+    Program *program = parse_program(p);
+
+    check_parser_errors(p);
+
+    assert(program->statements.size != 0);
+    assert(program->statements.size == 1);
+    Statement *stmt = statements_get(&program->statements, 0);
+    assert(stmt != NULL);
+
+    ExpressionStatement *expr_st = (ExpressionStatement *)stmt;
+    InfixExpression *infix_expr = (InfixExpression *)expr_st->expr;
+
+    String expected_op = STR_NEW(expected.op);
+    assert(String_cmp(&infix_expr->op, &expected_op));
+
+    test_integer_literal(infix_expr->right, expected.right_value);
+    test_integer_literal(infix_expr->left, expected.left_value);
+
+    free_parser(p);
+    free_program(program);
+    free(p);
+    free(l);
+    free(program);
+  }
+  TEST_PASSED;
+}
+
 typedef struct {
   char *input;
   char *op;
   long value;
 } PrefixTest;
 
-void test_integer_literal(Expression *expr, int32_t value);
+void test_parsing_prefix_expr(void) {
+  TEST_STARTED;
+  PrefixTest input[] = {
+      {"!6;", "!", 6},
+      {"-45;", "-", 45},
+      {"!9999;", "!", 9999},
+  };
+  for (int i = 0; i < 3; i++) {
+    Lexer *l = Lexer_new(String_from(input[i].input));
+    Parser *p = Parser_new(l);
+    Program *program = parse_program(p);
+    check_parser_errors(p);
+    assert(program->statements.size == 1);
+    Statement *stmt = statements_get(&program->statements, 0);
 
-FN_TEST(test_parsing_prefix_expr, ({
-          PrefixTest input[] = {
-              {"!6;", "!", 6},
-              {"-45;", "-", 45},
-              {"!9999;", "!", 9999},
-          };
-          for (int i = 0; i < 3; i++) {
-            Lexer *l = Lexer_new(String_from(input[i].input));
-            Parser *p = Parser_new(l);
-            Program *program = parse_program(p);
-            assert(program->statements.size != 1);
-            Statement *stmt = statements_get(&program->statements, 0);
-            assert(stmt != NULL);
-            ExpressionStatement *expr_st = (ExpressionStatement *)stmt;
+    assert(stmt != NULL);
+    ExpressionStatement *expr_st = (ExpressionStatement *)stmt;
 
-            PrefixExpression *prefix_expr = (PrefixExpression *)expr_st->expr;
-            String op = STR_NEW(input[i].op);
-            assert(String_cmp(&prefix_expr->op, &op));
-            test_integer_literal(prefix_expr->right, input[i].value);
-          }
-        }));
+    PrefixExpression *prefix_expr = (PrefixExpression *)expr_st->expr;
+    String op = STR_NEW(input[i].op);
+    assert(String_cmp(&prefix_expr->op, &op));
+    test_integer_literal(prefix_expr->right, input[i].value);
+
+    free_program(program);
+    free_parser(p);
+  }
+  TEST_PASSED;
+}
 
 FN_TEST(test_parsing_int_expr, ({
           const char *input = "5;";
@@ -93,8 +149,9 @@ FN_TEST(test_parsing_int_expr, ({
           check_parser_errors(p);
           assert(program->statements.size == 1);
 
-          Statement *stmt = statements_get(&program->statements, 0);
-          IntExpr *int_expr = (IntExpr *)stmt;
+          ExpressionStatement *expr_stmt =
+              (ExpressionStatement *)statements_get(&program->statements, 0);
+          IntExpr *int_expr = (IntExpr *)expr_stmt->expr;
           assert(int_expr->value == 5);
           String integer_token_literal =
               int_expr->base.vt->token_literal((Node *)int_expr);
@@ -149,7 +206,7 @@ void test_string_parser(void) {
       ident_new((Token){IDENT, String_from("myVar")}, String_from("myVar"));
   Expression *value = (Expression *)ident_new(
       (Token){IDENT, String_from("anotherVar")}, String_from("anotherVar"));
-  LetStatement *lt_st = let_statement_new(token, ident, value);
+  LetStatement *lt_st = let_statement_new(Token_clone(&token), ident, value);
   statements_push(&statements, (Statement *)lt_st);
   Program prog = (Program){statements};
 
@@ -378,13 +435,27 @@ void test_start_repl_stdin(void) {
 
 void check_parser_errors(Parser *p) {
   const StringArray *errors = parser_errors(p);
+
   if (errors->size == 0) {
     return;
   }
 
-  printf("Parser has %d errors", errors->size);
+  printf("Parser has %d errors\n", errors->size);
   for (int i = 0; i < errors->size; i++) {
-    printf("parser error: %s", string_array_get(&p->errors, i).chars);
+    printf("parser error: %s\n", string_array_get(&p->errors, i).chars);
   }
+  print_errors(p);
   assert(false);
+}
+void test_integer_literal(Expression *expr, int32_t value) {
+  IntExpr *int_expr = (IntExpr *)expr;
+  assert(int_expr->value == value);
+
+  String int_expr_str = int_expr->base.vt->string((Node *)int_expr);
+
+  String expected = String_from_int(value);
+  assert(String_cmp(&int_expr_str, &expected));
+
+  free_string(&int_expr_str);
+  free_string(&expected);
 }

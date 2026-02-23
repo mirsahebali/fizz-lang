@@ -9,6 +9,30 @@
 
 #define ERROR_STRING_MAX 100
 
+Precedence precedence_map(TokenType tt) {
+  switch (tt) {
+  case EQ:
+    return EQUALS;
+  case NOT_EQ:
+    return EQUALS;
+  case LT:
+    return LESSGREATER;
+  case GT:
+    return LESSGREATER;
+  case PLUS:
+    return SUM;
+  case MINUS:
+    return SUM;
+  case SLASH:
+    return PRODUCT;
+  case ASTERISK:
+    return PRODUCT;
+
+  default:
+    return INVALID;
+  }
+}
+
 StatementsArray statements_array_init(int32_t capacity) {
 
   assert(capacity >= 0);
@@ -68,7 +92,6 @@ void free_statements(StatementsArray *s) {
 
   for (int i = 0; i < s->size; i++) {
     s->data[i]->vt->destroy((Node *)s->data[i]);
-    free(s->data[i]);
   }
 
   free(s->data);
@@ -124,15 +147,55 @@ Parser *Parser_new(Lexer *l) {
   p->peek_token = (Token){ILLEGAL, String_from("")};
   p->curr_token = (Token){ILLEGAL, String_from("")};
   p->errors = string_array_init(1);
+  for (size_t i = 0; i < TOKEN_COUNT; i++) {
+    p->prefix_parse_fns[i] = NULL;
+    p->infix_parse_fns[i] = NULL;
+  }
   register_prefix(p, IDENT, (PrefixParseFn)parse_identifier);
   register_prefix(p, INT, (PrefixParseFn)parse_int_expr);
+  register_prefix(p, BANG, (PrefixParseFn)parse_prefix_expression);
+  register_prefix(p, MINUS, (PrefixParseFn)parse_prefix_expression);
+  register_prefix(p, PLUS, (PrefixParseFn)parse_prefix_expression);
+
+  register_infix(p, PLUS, (InfixParseFn)parse_infix_expression);
+  register_infix(p, MINUS, (InfixParseFn)parse_infix_expression);
+  register_infix(p, NOT_EQ, (InfixParseFn)parse_infix_expression);
+  register_infix(p, EQ, (InfixParseFn)parse_infix_expression);
+  register_infix(p, ASTERISK, (InfixParseFn)parse_infix_expression);
+  register_infix(p, LT, (InfixParseFn)parse_infix_expression);
+  register_infix(p, GT, (InfixParseFn)parse_infix_expression);
+  register_infix(p, SLASH, (InfixParseFn)parse_infix_expression);
 
   parser_next_token(p);
   parser_next_token(p);
   return p;
 }
 
+Precedence peek_precedence(Parser *self) {
+  Precedence peek_prec = precedence_map(self->peek_token.type);
+  if (peek_prec != INVALID) {
+    return peek_prec;
+  }
+  return LOWEST;
+}
+
+Precedence curr_precedence(Parser *self) {
+  Precedence curr_prec = precedence_map(self->curr_token.type);
+  if (curr_prec != INVALID) {
+    return curr_prec;
+  }
+  return LOWEST;
+}
+
 const StringArray *parser_errors(const Parser *self) { return &self->errors; }
+
+void no_prefix_parse_error(Parser *self, const TokenType tt) {
+  char buf[512];
+  snprintf(buf, 512, "no prefix parse function for %s found",
+           token_type_to_string(tt));
+
+  string_array_push(&self->errors, String_from(buf));
+};
 
 void peek_error(Parser *self, const TokenType tt) {
   char buf[ERROR_STRING_MAX];
@@ -171,17 +234,15 @@ void parser_next_token(Parser *self) {
 }
 
 Statement *parse_statement(Parser *self) {
+
   switch (self->curr_token.type) {
   case LET:
     return (Statement *)parse_let_statement(self);
   case RETURN:
     return (Statement *)parse_return_statement(self);
-  case IDENT:
-    return (Statement *)parse_expression_statement(self);
-  case INT:
-    return (Statement *)parse_int_expr(self);
+
   default:
-    return NULL;
+    return (Statement *)parse_expression_statement(self);
   }
 }
 
@@ -232,7 +293,8 @@ void print_errors(Parser *self) {
 LetStatement *parse_let_statement(Parser *self) {
   assert(self != NULL);
 
-  LetStatement *let_st = let_statement_new(self->curr_token, NULL, NULL);
+  LetStatement *let_st =
+      let_statement_new(Token_clone(&self->curr_token), NULL, NULL);
 
   if (!expect_peek(self, IDENT)) {
     return NULL;
@@ -276,11 +338,27 @@ ReturnStatement *parse_return_statement(Parser *self) {
 }
 Expression *parse_expression(Parser *self, Precedence prec) {
   PrefixParseFn prefix = self->prefix_parse_fns[self->curr_token.type];
+
   if (prefix == NULL) {
+    no_prefix_parse_error(self, self->curr_token.type);
     return NULL;
   }
 
   Expression *left_expr = prefix(self);
+
+  while (!is_parser_peek_token(self, SEMICOLON) &&
+         prec < peek_precedence(self)) {
+
+    InfixParseFn infix = self->infix_parse_fns[self->curr_token.type];
+    if (infix == NULL) {
+      return left_expr;
+    }
+
+    parser_next_token(self);
+
+    left_expr = infix(self, left_expr);
+  }
+
   return left_expr;
 
   // if (self->curr_token.type == INT) {
@@ -294,6 +372,33 @@ Expression *parse_expression(Parser *self, Precedence prec) {
   // }
   // // TODO: add more parsing functions and checks
   // return NULL;
+}
+
+PrefixExpression *parse_prefix_expression(Parser *self) {
+
+  PrefixExpression *expr_new = prefix_expr_new(
+      self->curr_token, String_clone(&self->curr_token.literal), NULL);
+
+  parser_next_token(self);
+
+  expr_new->right = parse_expression(self, PREFIX);
+
+  return expr_new;
+}
+
+InfixExpression *parse_infix_expression(Parser *self, Expression *left) {
+
+  InfixExpression *infix_new =
+      infix_expr_new(Token_clone(&self->curr_token), left,
+                     String_clone(&self->curr_token.literal), NULL);
+
+  Precedence prec = curr_precedence(self);
+
+  parser_next_token(self);
+
+  infix_new->right = parse_expression(self, prec);
+
+  return infix_new;
 }
 OperatorExpr *parse_operator_expr(Parser *self) {
   OperatorExpr *op_expr = (OperatorExpr *)malloc(sizeof(OperatorExpr));
@@ -312,6 +417,7 @@ OperatorExpr *parse_operator_expr(Parser *self) {
 
 ExpressionStatement *parse_expression_statement(Parser *self) {
   ExpressionStatement *stmt = expr_st_new(Token_clone(&self->curr_token), NULL);
+
   stmt->expr = parse_expression(self, LOWEST);
 
   if (is_parser_peek_token(self, SEMICOLON)) {

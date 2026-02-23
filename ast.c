@@ -45,6 +45,7 @@ void ident_destroy(Node *self) {
 
   free_token(&ident->token);
   free_string(&ident->value);
+  free(self);
 
   printf("Identifier destroyed\n");
 }
@@ -104,15 +105,17 @@ void let_statement_destroy(Node *self) {
     return;
   LetStatement *let_st = (LetStatement *)self;
 
+  free_token(&let_st->token);
   if (let_st->name != NULL) {
     let_st->name->base.vt->destroy((Node *)let_st->name);
   }
   if (let_st->value != NULL) {
     let_st->value->vt->destroy((Node *)let_st->value);
   }
-  free(let_st->name);
-  free(let_st->value);
+
   printf("LetStatement destroyed\n");
+
+  free(self);
 }
 
 OperatorExpr *operator_expr_new(Expression *left, Token *op,
@@ -129,11 +132,11 @@ OperatorExpr *operator_expr_new(Expression *left, Token *op,
     assert(right->vt->_t != EXPRESSION);
   };
 
-  if (op->type != PLUS || op->type != MINUS || op->type != ASTERISK ||
-      op->type != SLASH) {
+  bool is_invalid_op = op->type != PLUS && op->type != MINUS &&
+                       op->type != ASTERISK && op->type != SLASH;
+  if (is_invalid_op) {
     printf("Invalid op: %s\n", token_type_to_string(op->type));
-    assert(op->type != PLUS || op->type != MINUS || op->type != ASTERISK ||
-           op->type != SLASH);
+    assert(is_invalid_op);
   }
 
   op_expr->left = left;
@@ -160,11 +163,9 @@ void operator_expr_destroy(Node *self) {
   op_expr->left->vt->destroy(op_expr->left);
   op_expr->right->vt->destroy(op_expr->right);
   free_token(&op_expr->op);
-  free(op_expr);
+  free(self);
 
-#ifdef DEBUG_PRINTS
   printf("OprExpr destroyed \n");
-#endif /* ifdef DEBUG_PRINTS */
 }
 
 IntExpr *int_expr_new(const int value) {
@@ -195,6 +196,7 @@ void int_expr_destroy(Node *self) {
   assert(int_expr != NULL);
   free_token(&int_expr->token);
   printf("IntExpr Destroyed\n");
+  free(self);
 }
 
 ReturnStatement *return_st_new(const Expression *value) {
@@ -241,6 +243,7 @@ void return_st_destroy(Node *self) {
     ret_st->value->vt->destroy((Node *)ret_st->value);
   }
   free_token(&ret_st->token);
+  free(self);
   printf("Return Statement destroyed\n");
 }
 
@@ -270,5 +273,100 @@ void expr_st_destroy(Node *self) {
 
   free_token(&st_expr->token);
   st_expr->expr->vt->destroy((Node *)st_expr->expr);
-  free((Node *)st_expr->expr);
+  free(self);
+}
+
+PrefixExpression *prefix_expr_new(const Token t, const String op,
+                                  Expression *right) {
+  PrefixExpression *prefix_expr = malloc(sizeof(PrefixExpression));
+
+  prefix_expr->base.vt = &PREFIX_EXPR_VT;
+  prefix_expr->right = right;
+  prefix_expr->token = Token_clone(&t);
+  prefix_expr->op = op;
+
+  return prefix_expr;
+}
+String prefix_expr_token_literal(const Node *self) {
+  assert(self != NULL);
+
+  PrefixExpression *prefix_expr = (PrefixExpression *)self;
+  return String_clone(&prefix_expr->token.literal);
+}
+String prefix_expr_string(const Node *self) {
+  assert(self != NULL);
+
+  PrefixExpression *prefix_expr = (PrefixExpression *)self;
+  String right_expr_str = (prefix_expr->right->vt->string(prefix_expr->right));
+  String left_paren = STR_NEW("(");
+  String right_paren = STR_NEW(")");
+  String *out_str = String_join(4, &left_paren, &prefix_expr->op,
+                                &right_expr_str, &right_paren);
+
+  String out = String_clone(out_str);
+
+  free_string(out_str);
+  free_string(&right_expr_str);
+
+  return out;
+}
+void prefix_expr_destroy(Node *self) {
+
+  assert(self != NULL);
+
+  PrefixExpression *prefix_expr = (PrefixExpression *)self;
+
+  free_token(&prefix_expr->token);
+  free_string(&prefix_expr->op);
+  prefix_expr->right->vt->destroy((Node *)prefix_expr->right);
+
+  free(self);
+}
+
+InfixExpression *infix_expr_new(const Token t, Expression *left,
+                                const String op, Expression *right) {
+  InfixExpression *infix_expr =
+      (InfixExpression *)malloc(sizeof(InfixExpression));
+
+  infix_expr->base.vt = &INFIX_EXPR_VT;
+  infix_expr->token = t;
+  infix_expr->left = left;
+  infix_expr->right = right;
+  infix_expr->op = op;
+
+  return infix_expr;
+}
+String infix_expr_token_literal(const Node *self) {
+  InfixExpression *infix_expr = (InfixExpression *)self;
+  return String_clone(&infix_expr->token.literal);
+}
+String infix_expr_string(const Node *self) {
+
+  InfixExpression *infix_expr = (InfixExpression *)self;
+  String l_paren = STR_NEW("(");
+  String r_paren = STR_NEW(")");
+  String left_str = infix_expr->left->vt->string((Node *)infix_expr->left);
+  String right_str = infix_expr->right->vt->string((Node *)infix_expr->right);
+  String *out_str = String_join(5, &l_paren, &left_str, &infix_expr->op,
+                                &right_str, &r_paren);
+
+  String out = String_clone(out_str);
+  free_string(out_str);
+  return out;
+}
+void infix_expr_destroy(Node *self) {
+  InfixExpression *infix_expr = (InfixExpression *)self;
+
+  if (infix_expr->right != NULL) {
+    infix_expr->right->vt->destroy((Node *)infix_expr->right);
+  }
+
+  if (infix_expr->left != NULL) {
+    infix_expr->left->vt->destroy((Node *)infix_expr->left);
+  }
+
+  free_string(&infix_expr->op);
+  free_token(&infix_expr->token);
+
+  free(self);
 }
