@@ -132,8 +132,8 @@ OperatorExpr *operator_expr_new(Expression *left, Token *op,
     assert(right->vt->_t != EXPRESSION);
   };
 
-  bool is_invalid_op = op->type != PLUS && op->type != MINUS &&
-                       op->type != ASTERISK && op->type != SLASH;
+  bool is_invalid_op = op->type != TOKEN_PLUS && op->type != TOKEN_MINUS &&
+                       op->type != TOKEN_ASTERISK && op->type != TOKEN_SLASH;
   if (is_invalid_op) {
     printf("Invalid op: %s\n", token_type_to_string(op->type));
     assert(is_invalid_op);
@@ -173,7 +173,7 @@ IntExpr *int_expr_new(const int value) {
   assert(int_expr != NULL);
 
   int_expr->base.vt = &INT_EXPR_VT;
-  int_expr->token = (Token){INT, String_from_int(value)};
+  int_expr->token = (Token){TOKEN_INT, String_from_int(value)};
   int_expr->value = value;
 
   return int_expr;
@@ -205,7 +205,7 @@ ReturnStatement *return_st_new(const Expression *value) {
   assert(ret_st != NULL);
 
   ret_st->base.vt = &RETURN_ST_VT;
-  ret_st->token = (Token){RETURN, String_from("return")};
+  ret_st->token = (Token){TOKEN_RETURN, String_from("return")};
   ret_st->value = value;
 
   return ret_st;

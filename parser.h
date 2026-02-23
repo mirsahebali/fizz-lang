@@ -8,14 +8,14 @@
 #include "ast.h"
 
 typedef enum Precedence {
-  INVALID,
-  LOWEST,
-  EQUALS,      // ==
-  LESSGREATER, // > or <
-  SUM,         // +
-  PRODUCT,     // *
-  PREFIX,      // -X or !X
-  FN_CALL,     // someFunction(X)
+  PREC_INVALID,
+  PREC_LOWEST,
+  PREC_EQUALS,      // ==
+  PREC_LESSGREATER, // > or <
+  PREC_SUM,         // +
+  PREC_PRODUCT,     // *
+  PREC_PREFIX,      // -X or !X
+  PREC_FN_CALL,     // someFunction(X)
 } Precedence;
 
 Precedence precedence_map(TokenType);

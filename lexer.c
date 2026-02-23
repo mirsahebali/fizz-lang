@@ -73,7 +73,7 @@ TokenType lookup_ident(String *literal) {
       return keywords_map[i].type;
     }
   }
-  return IDENT;
+  return TOKEN_IDENT;
 }
 
 Token next_token(Lexer *l) {
@@ -84,57 +84,57 @@ Token next_token(Lexer *l) {
   case '=':
     if (peek_char(l) == '=') {
       read_char(l);
-      t.type = EQ;
+      t.type = TOKEN_EQ;
       t.literal = String_from("==");
     } else
-      t = Token_from_char(ASSIGN, l->ch);
+      t = Token_from_char(TOKEN_ASSIGN, l->ch);
     break;
   case '+':
-    t = Token_from_char(PLUS, l->ch);
+    t = Token_from_char(TOKEN_PLUS, l->ch);
     break;
   case '-':
-    t = Token_from_char(MINUS, l->ch);
+    t = Token_from_char(TOKEN_MINUS, l->ch);
     break;
   case ',':
-    t = Token_from_char(COMMA, l->ch);
+    t = Token_from_char(TOKEN_COMMA, l->ch);
     break;
   case '/':
-    t = Token_from_char(SLASH, l->ch);
+    t = Token_from_char(TOKEN_SLASH, l->ch);
     break;
   case '*':
-    t = Token_from_char(ASTERISK, l->ch);
+    t = Token_from_char(TOKEN_ASTERISK, l->ch);
     break;
   case '<':
-    t = Token_from_char(LT, l->ch);
+    t = Token_from_char(TOKEN_LT, l->ch);
     break;
   case '>':
-    t = Token_from_char(GT, l->ch);
+    t = Token_from_char(TOKEN_GT, l->ch);
     break;
   case '!':
     if (peek_char(l) == '=') {
       read_char(l);
-      t = (Token){NOT_EQ, String_from("!=")};
+      t = (Token){TOKEN_NOT_EQ, String_from("!=")};
     } else {
-      t = Token_from_char(BANG, l->ch);
+      t = Token_from_char(TOKEN_BANG, l->ch);
     }
     break;
   case '(':
-    t = Token_from_char(LPAREN, l->ch);
+    t = Token_from_char(TOKEN_LPAREN, l->ch);
     break;
   case ')':
-    t = Token_from_char(RPAREN, l->ch);
+    t = Token_from_char(TOKEN_RPAREN, l->ch);
     break;
   case '{':
-    t = Token_from_char(LBRACE, l->ch);
+    t = Token_from_char(TOKEN_LBRACE, l->ch);
     break;
   case '}':
-    t = Token_from_char(RBRACE, l->ch);
+    t = Token_from_char(TOKEN_RBRACE, l->ch);
     break;
   case ';':
-    t = Token_from_char(SEMICOLON, l->ch);
+    t = Token_from_char(TOKEN_SEMICOLON, l->ch);
     break;
   case '\0':
-    t = Token_from_char(EOF_T, '\0');
+    t = Token_from_char(TOKEN_EOF, '\0');
     break;
   default:
     if (is_letter(l->ch)) {
@@ -143,10 +143,10 @@ Token next_token(Lexer *l) {
       return t;
     } else if (is_digit(l->ch)) {
       t.literal = read_number(l);
-      t.type = INT;
+      t.type = TOKEN_INT;
       return t;
     } else {
-      t = Token_from_char(ILLEGAL, l->ch);
+      t = Token_from_char(TOKEN_ILLEGAL, l->ch);
     }
     break;
   }

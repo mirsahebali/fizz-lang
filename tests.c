@@ -83,6 +83,7 @@ void test_parsing_infix_expr(void) {
 
     assert(program->statements.size != 0);
     assert(program->statements.size == 1);
+
     Statement *stmt = statements_get(&program->statements, 0);
     assert(stmt != NULL);
 
@@ -97,9 +98,6 @@ void test_parsing_infix_expr(void) {
 
     free_parser(p);
     free_program(program);
-    free(p);
-    free(l);
-    free(program);
   }
   TEST_PASSED;
 }
@@ -199,13 +197,14 @@ void test_string_parser(void) {
   StatementsArray statements = statements_array_init(2);
   String let_str = STR_NEW("let");
   Token token = (Token){
-      LET,
+      TOKEN_LET,
       let_str,
   };
-  Identifier *ident =
-      ident_new((Token){IDENT, String_from("myVar")}, String_from("myVar"));
-  Expression *value = (Expression *)ident_new(
-      (Token){IDENT, String_from("anotherVar")}, String_from("anotherVar"));
+  Identifier *ident = ident_new((Token){TOKEN_IDENT, String_from("myVar")},
+                                String_from("myVar"));
+  Expression *value =
+      (Expression *)ident_new((Token){TOKEN_IDENT, String_from("anotherVar")},
+                              String_from("anotherVar"));
   LetStatement *lt_st = let_statement_new(Token_clone(&token), ident, value);
   statements_push(&statements, (Statement *)lt_st);
   Program prog = (Program){statements};
@@ -296,29 +295,46 @@ void test_token_scanning(void) {
   Lexer *l = Lexer_new(String_from(input));
 
   Token expected[] = {
-      {LET, String_from("let")},       {IDENT, String_from("a")},
-      {ASSIGN, String_from("=")},      {INT, String_from("10")},
-      {SEMICOLON, String_from(";")},
+      {TOKEN_LET, String_from("let")},
+      {TOKEN_IDENT, String_from("a")},
+      {TOKEN_ASSIGN, String_from("=")},
+      {TOKEN_INT, String_from("10")},
+      {TOKEN_SEMICOLON, String_from(";")},
 
-      {LET, String_from("let")},       {IDENT, String_from("b")},
-      {ASSIGN, String_from("=")},      {INT, String_from("5")},
-      {SEMICOLON, String_from(";")},
+      {TOKEN_LET, String_from("let")},
+      {TOKEN_IDENT, String_from("b")},
+      {TOKEN_ASSIGN, String_from("=")},
+      {TOKEN_INT, String_from("5")},
+      {TOKEN_SEMICOLON, String_from(";")},
 
-      {LET, String_from("let")},       {IDENT, String_from("add")},
-      {ASSIGN, String_from("=")},      {FUNCTION, String_from("fn")},
-      {LPAREN, String_from("(")},      {IDENT, String_from("a")},
-      {COMMA, String_from(",")},       {IDENT, String_from("b")},
-      {RPAREN, String_from(")")},      {LBRACE, String_from("{")},
-      {RETURN, String_from("return")}, {IDENT, String_from("a")},
-      {PLUS, String_from("+")},        {IDENT, String_from("b")},
-      {SEMICOLON, String_from(";")},   {RBRACE, String_from("}")},
-      {SEMICOLON, String_from(";")},
+      {TOKEN_LET, String_from("let")},
+      {TOKEN_IDENT, String_from("add")},
+      {TOKEN_ASSIGN, String_from("=")},
+      {TOKEN_FUNCTION, String_from("fn")},
+      {TOKEN_LPAREN, String_from("(")},
+      {TOKEN_IDENT, String_from("a")},
+      {TOKEN_COMMA, String_from(",")},
+      {TOKEN_IDENT, String_from("b")},
+      {TOKEN_RPAREN, String_from(")")},
+      {TOKEN_LBRACE, String_from("{")},
+      {TOKEN_RETURN, String_from("return")},
+      {TOKEN_IDENT, String_from("a")},
+      {TOKEN_PLUS, String_from("+")},
+      {TOKEN_IDENT, String_from("b")},
+      {TOKEN_SEMICOLON, String_from(";")},
+      {TOKEN_RBRACE, String_from("}")},
+      {TOKEN_SEMICOLON, String_from(";")},
 
-      {LET, String_from("let")},       {IDENT, String_from("result")},
-      {ASSIGN, String_from("=")},      {IDENT, String_from("add")},
-      {LPAREN, String_from("(")},      {IDENT, String_from("a")},
-      {COMMA, String_from(",")},       {IDENT, String_from("b")},
-      {RPAREN, String_from(")")},      {SEMICOLON, String_from(";")},
+      {TOKEN_LET, String_from("let")},
+      {TOKEN_IDENT, String_from("result")},
+      {TOKEN_ASSIGN, String_from("=")},
+      {TOKEN_IDENT, String_from("add")},
+      {TOKEN_LPAREN, String_from("(")},
+      {TOKEN_IDENT, String_from("a")},
+      {TOKEN_COMMA, String_from(",")},
+      {TOKEN_IDENT, String_from("b")},
+      {TOKEN_RPAREN, String_from(")")},
+      {TOKEN_SEMICOLON, String_from(";")},
   };
 
   Token t = next_token(l);
@@ -357,53 +373,88 @@ void test_token_scanning(void) {
   l = Lexer_new(String_from(input1));
 
   Token expected1[] = {
-      {LET, String_from("let")},       {IDENT, String_from("five")},
-      {ASSIGN, String_from("=")},      {INT, String_from("5")},
-      {SEMICOLON, String_from(";")},
+      {TOKEN_LET, String_from("let")},
+      {TOKEN_IDENT, String_from("five")},
+      {TOKEN_ASSIGN, String_from("=")},
+      {TOKEN_INT, String_from("5")},
+      {TOKEN_SEMICOLON, String_from(";")},
 
-      {LET, String_from("let")},       {IDENT, String_from("ten")},
-      {ASSIGN, String_from("=")},      {INT, String_from("10")},
-      {SEMICOLON, String_from(";")},
+      {TOKEN_LET, String_from("let")},
+      {TOKEN_IDENT, String_from("ten")},
+      {TOKEN_ASSIGN, String_from("=")},
+      {TOKEN_INT, String_from("10")},
+      {TOKEN_SEMICOLON, String_from(";")},
 
-      {LET, String_from("let")},       {IDENT, String_from("add")},
-      {ASSIGN, String_from("=")},      {FUNCTION, String_from("fn")},
-      {LPAREN, String_from("(")},      {IDENT, String_from("x")},
-      {COMMA, String_from(",")},       {IDENT, String_from("y")},
-      {RPAREN, String_from(")")},      {LBRACE, String_from("{")},
-      {RETURN, String_from("return")}, {IDENT, String_from("x")},
-      {PLUS, String_from("+")},        {IDENT, String_from("y")},
-      {SEMICOLON, String_from(";")},   {RBRACE, String_from("}")},
-      {SEMICOLON, String_from(";")},
+      {TOKEN_LET, String_from("let")},
+      {TOKEN_IDENT, String_from("add")},
+      {TOKEN_ASSIGN, String_from("=")},
+      {TOKEN_FUNCTION, String_from("fn")},
+      {TOKEN_LPAREN, String_from("(")},
+      {TOKEN_IDENT, String_from("x")},
+      {TOKEN_COMMA, String_from(",")},
+      {TOKEN_IDENT, String_from("y")},
+      {TOKEN_RPAREN, String_from(")")},
+      {TOKEN_LBRACE, String_from("{")},
+      {TOKEN_RETURN, String_from("return")},
+      {TOKEN_IDENT, String_from("x")},
+      {TOKEN_PLUS, String_from("+")},
+      {TOKEN_IDENT, String_from("y")},
+      {TOKEN_SEMICOLON, String_from(";")},
+      {TOKEN_RBRACE, String_from("}")},
+      {TOKEN_SEMICOLON, String_from(";")},
 
-      {LET, String_from("let")},       {IDENT, String_from("result")},
-      {ASSIGN, String_from("=")},      {IDENT, String_from("add")},
-      {LPAREN, String_from("(")},      {IDENT, String_from("five")},
-      {COMMA, String_from(",")},       {IDENT, String_from("ten")},
-      {RPAREN, String_from(")")},      {SEMICOLON, String_from(";")},
+      {TOKEN_LET, String_from("let")},
+      {TOKEN_IDENT, String_from("result")},
+      {TOKEN_ASSIGN, String_from("=")},
+      {TOKEN_IDENT, String_from("add")},
+      {TOKEN_LPAREN, String_from("(")},
+      {TOKEN_IDENT, String_from("five")},
+      {TOKEN_COMMA, String_from(",")},
+      {TOKEN_IDENT, String_from("ten")},
+      {TOKEN_RPAREN, String_from(")")},
+      {TOKEN_SEMICOLON, String_from(";")},
 
-      {BANG, String_from("!")},        {MINUS, String_from("-")},
-      {SLASH, String_from("/")},       {ASTERISK, String_from("*")},
-      {INT, String_from("5")},         {SEMICOLON, String_from(";")},
+      {TOKEN_BANG, String_from("!")},
+      {TOKEN_MINUS, String_from("-")},
+      {TOKEN_SLASH, String_from("/")},
+      {TOKEN_ASTERISK, String_from("*")},
+      {TOKEN_INT, String_from("5")},
+      {TOKEN_SEMICOLON, String_from(";")},
 
-      {INT, String_from("5")},         {LT, String_from("<")},
-      {INT, String_from("10")},        {GT, String_from(">")},
-      {INT, String_from("5")},         {SEMICOLON, String_from(";")},
+      {TOKEN_INT, String_from("5")},
+      {TOKEN_LT, String_from("<")},
+      {TOKEN_INT, String_from("10")},
+      {TOKEN_GT, String_from(">")},
+      {TOKEN_INT, String_from("5")},
+      {TOKEN_SEMICOLON, String_from(";")},
 
-      {IF, String_from("if")},         {LPAREN, String_from("(")},
-      {INT, String_from("5")},         {LT, String_from("<")},
-      {INT, String_from("10")},        {RPAREN, String_from(")")},
-      {LBRACE, String_from("{")},      {RETURN, String_from("return")},
-      {TRUE, String_from("true")},     {SEMICOLON, String_from(";")},
-      {RBRACE, String_from("}")},      {ELSE, String_from("else")},
-      {LBRACE, String_from("{")},      {RETURN, String_from("return")},
-      {FALSE, String_from("false")},   {SEMICOLON, String_from(";")},
-      {RBRACE, String_from("}")},
+      {TOKEN_IF, String_from("if")},
+      {TOKEN_LPAREN, String_from("(")},
+      {TOKEN_INT, String_from("5")},
+      {TOKEN_LT, String_from("<")},
+      {TOKEN_INT, String_from("10")},
+      {TOKEN_RPAREN, String_from(")")},
+      {TOKEN_LBRACE, String_from("{")},
+      {TOKEN_RETURN, String_from("return")},
+      {TOKEN_TRUE, String_from("true")},
+      {TOKEN_SEMICOLON, String_from(";")},
+      {TOKEN_RBRACE, String_from("}")},
+      {TOKEN_ELSE, String_from("else")},
+      {TOKEN_LBRACE, String_from("{")},
+      {TOKEN_RETURN, String_from("return")},
+      {TOKEN_FALSE, String_from("false")},
+      {TOKEN_SEMICOLON, String_from(";")},
+      {TOKEN_RBRACE, String_from("}")},
 
-      {INT, String_from("10")},        {EQ, String_from("==")},
-      {INT, String_from("10")},        {SEMICOLON, String_from(";")},
+      {TOKEN_INT, String_from("10")},
+      {TOKEN_EQ, String_from("==")},
+      {TOKEN_INT, String_from("10")},
+      {TOKEN_SEMICOLON, String_from(";")},
 
-      {INT, String_from("10")},        {NOT_EQ, String_from("!=")},
-      {INT, String_from("9")},         {SEMICOLON, String_from(";")},
+      {TOKEN_INT, String_from("10")},
+      {TOKEN_NOT_EQ, String_from("!=")},
+      {TOKEN_INT, String_from("9")},
+      {TOKEN_SEMICOLON, String_from(";")},
   };
 
   Token t1 = next_token(l);

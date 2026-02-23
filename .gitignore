@@ -1,4 +1,5 @@
 build
 deps
 compile_commands.json
+gf2
 .cache

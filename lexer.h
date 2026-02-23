@@ -8,34 +8,34 @@
 #include "utils.h"
 
 #define TOKEN_LIST                                                             \
-  X(ILLEGAL)                                                                   \
-  X(IDENT)                                                                     \
-  X(INT)                                                                       \
-  X(COMMA)                                                                     \
-  X(SEMICOLON)                                                                 \
-  X(LPAREN)                                                                    \
-  X(RPAREN)                                                                    \
-  X(LBRACE)                                                                    \
-  X(RBRACE)                                                                    \
-  X(ASSIGN)                                                                    \
-  X(PLUS)                                                                      \
-  X(MINUS)                                                                     \
-  X(EQ)                                                                        \
-  X(NOT_EQ)                                                                    \
-  X(BANG)                                                                      \
-  X(SLASH)                                                                     \
-  X(ASTERISK)                                                                  \
-  X(LT)                                                                        \
-  X(GT)                                                                        \
-  X(FUNCTION)                                                                  \
-  X(LET)                                                                       \
-  X(IF)                                                                        \
-  X(ELSE)                                                                      \
-  X(RETURN)                                                                    \
-  X(TRUE)                                                                      \
-  X(FALSE)                                                                     \
-  X(FOR)                                                                       \
-  X(EOF_T)
+  X(TOKEN_ILLEGAL)                                                             \
+  X(TOKEN_IDENT)                                                               \
+  X(TOKEN_INT)                                                                 \
+  X(TOKEN_COMMA)                                                               \
+  X(TOKEN_SEMICOLON)                                                           \
+  X(TOKEN_LPAREN)                                                              \
+  X(TOKEN_RPAREN)                                                              \
+  X(TOKEN_LBRACE)                                                              \
+  X(TOKEN_RBRACE)                                                              \
+  X(TOKEN_ASSIGN)                                                              \
+  X(TOKEN_PLUS)                                                                \
+  X(TOKEN_MINUS)                                                               \
+  X(TOKEN_EQ)                                                                  \
+  X(TOKEN_NOT_EQ)                                                              \
+  X(TOKEN_BANG)                                                                \
+  X(TOKEN_SLASH)                                                               \
+  X(TOKEN_ASTERISK)                                                            \
+  X(TOKEN_LT)                                                                  \
+  X(TOKEN_GT)                                                                  \
+  X(TOKEN_FUNCTION)                                                            \
+  X(TOKEN_LET)                                                                 \
+  X(TOKEN_IF)                                                                  \
+  X(TOKEN_ELSE)                                                                \
+  X(TOKEN_RETURN)                                                              \
+  X(TOKEN_TRUE)                                                                \
+  X(TOKEN_FALSE)                                                               \
+  X(TOKEN_FOR)                                                                 \
+  X(TOKEN_EOF)
 
 typedef enum u8 {
 #define X(tt) tt,
@@ -64,8 +64,11 @@ typedef struct {
 } KeywordsMap;
 
 static const KeywordsMap keywords_map[] = {
-    {"let", LET},       {"fn", FUNCTION}, {"if", IF},       {"else", ELSE},
-    {"return", RETURN}, {"true", TRUE},   {"false", FALSE}, {"for", FOR},
+    {"let", TOKEN_LET},       {"fn", TOKEN_FUNCTION},
+    {"if", TOKEN_IF},         {"else", TOKEN_ELSE},
+
+    {"return", TOKEN_RETURN}, {"true", TOKEN_TRUE},
+    {"false", TOKEN_FALSE},   {"for", TOKEN_FOR},
 };
 
 Lexer *Lexer_new(String input);
