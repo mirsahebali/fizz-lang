@@ -7,6 +7,9 @@
 #include "parser.h"
 #include "utils.h"
 
+#define TRACE_BEGIN printf("\t\nBEGIN %s", __FUNCTION__);
+#define TRACE_END printf("\t\nEND %s", __FUNCTION__);
+
 #define ERROR_STRING_MAX 100
 
 Precedence precedence_map(TokenType tt) {
@@ -319,6 +322,7 @@ LetStatement *parse_let_statement(Parser *self) {
   // Expression *expr = parse_expression(self);
 
   return let_st;
+  TRACE_END;
 }
 Identifier *parse_identifier(Parser *self) {
   assert(self != NULL);
@@ -328,6 +332,7 @@ Identifier *parse_identifier(Parser *self) {
 
   assert(ident != NULL);
   return ident;
+  TRACE_END;
 }
 
 Statement *parse_if_statement(Parser *self) { return NULL; }
@@ -339,6 +344,7 @@ ReturnStatement *parse_return_statement(Parser *self) {
     parser_next_token(self);
   }
   return ret_st;
+  TRACE_END;
 }
 Expression *parse_expression(Parser *self, Precedence prec) {
   PrefixParseFn prefix = self->prefix_parse_fns[self->curr_token.type];
@@ -364,18 +370,6 @@ Expression *parse_expression(Parser *self, Precedence prec) {
   }
 
   return left_expr;
-
-  // if (self->curr_token.type == INT) {
-  //   if (self->peek_token.type == PLUS) {
-  //     return (Expression *)parse_operator_expr(self);
-  //   } else if (self->peek_token.type == SEMICOLON) {
-  //     return (Expression *)parse_integer_literal(self);
-  //   }
-  // } else if (self->curr_token.type == LPAREN) {
-  //   return (Expression *)parse_grouped_expr(self);
-  // }
-  // // TODO: add more parsing functions and checks
-  // return NULL;
 }
 
 PrefixExpression *parse_prefix_expression(Parser *self) {

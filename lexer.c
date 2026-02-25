@@ -6,45 +6,46 @@
 #include "lexer.h"
 #include "utils.h"
 
-void read_char(Lexer *l) {
-  if (l->read_position >= l->input.length) {
-    l->ch = '\0';
+void read_char(Lexer *self) {
+  if (self->read_position >= self->input.length) {
+    self->ch = '\0';
   } else {
-    l->ch = String_char_at(&l->input, l->read_position);
+    self->ch = String_char_at(&self->input, self->read_position);
   }
-  l->position = l->read_position;
-  l->read_position++;
+  self->position = self->read_position;
+  self->read_position++;
 }
 
-String read_ident(Lexer *l) {
-  int32_t position = l->position;
-  while (is_letter(l->ch)) {
-    read_char(l);
+String read_ident(Lexer *self) {
+  int32_t position = self->position;
+  while (is_letter(self->ch)) {
+    read_char(self);
   }
 
-  return String_substr_range(&l->input, position, l->position - position);
+  return String_substr_range(&self->input, position, self->position - position);
 }
 
-char peek_char(Lexer *l) {
-  if (l->read_position >= l->input.length) {
+char peek_char(const Lexer *self) {
+  if (self->read_position >= self->input.length) {
     return 0;
   }
 
-  return String_char_at(&l->input, l->read_position);
+  return String_char_at(&self->input, self->read_position);
 }
 
-String read_number(Lexer *l) {
-  int32_t position = l->position;
-  while (is_digit(l->ch)) {
-    read_char(l);
+String read_number(Lexer *self) {
+  int32_t position = self->position;
+  while (is_digit(self->ch)) {
+    read_char(self);
   }
 
-  return String_substr_range(&l->input, position, l->position - position);
+  return String_substr_range(&self->input, position, self->position - position);
 }
 
-void skip_whitespace(Lexer *l) {
-  while (l->ch == ' ' || l->ch == '\t' || l->ch == '\n' || l->ch == '\r') {
-    read_char(l);
+void skip_whitespace(Lexer *self) {
+  while (self->ch == ' ' || self->ch == '\t' || self->ch == '\n' ||
+         self->ch == '\r') {
+    read_char(self);
   }
 }
 

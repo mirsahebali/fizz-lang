@@ -24,9 +24,8 @@
 #define FN_TEST(test_name, expr)                                               \
   void test_name(void) {                                                       \
     TEST_STARTED;                                                              \
-    do {                                                                       \
-      expr;                                                                    \
-    } while (0);                                                               \
+    do                                                                         \
+      expr while (0);                                                          \
     TEST_PASSED;                                                               \
   }
 
@@ -41,6 +40,7 @@ void test_parsing_ident_expr(void);
 void test_parsing_int_expr(void);
 void test_parsing_prefix_expr(void);
 void test_parsing_infix_expr(void);
+void test_operator_precedence_parsing(void);
 
 int main() {
 
@@ -53,6 +53,7 @@ int main() {
   test_parsing_int_expr();
   test_parsing_prefix_expr();
   test_parsing_infix_expr();
+  test_operator_precedence_parsing();
 
   return 0;
 }
@@ -65,6 +66,80 @@ typedef struct {
   char *op;
   int right_value;
 } InfixTest;
+
+typedef struct {
+
+  char *input;
+  char *expected;
+} TestCase;
+void test_operator_precedence_parsing(void) {
+  TestCase test_cases[] = {
+      {
+          "-a * b",
+          "((-a) * b)",
+      },
+      {
+          "-!a",
+          "(-(!a))",
+      },
+      {
+          "!-a",
+          "(!(-a))",
+      },
+      {
+          "a + b + c",
+          "((a + b) + c)",
+      },
+      {
+          "a + b - c",
+          "((a + b) - c)",
+      },
+      {
+          "a * b * c",
+          "((a * b) * c)",
+      },
+      {
+          "a * b / c",
+          "((a * b) / c)",
+      },
+      {
+          "a + b / c",
+          "((a + b) / c)",
+      },
+      {
+          "a + b * c + d / e - f",
+          "(((a + (b * c)) + (d / e)) - f)",
+      },
+      {
+          "3 + 4; -5 * 5",
+          "(3 + 4)((-5) * 5)",
+      },
+      {
+          "5 > 4 == 3 < 4",
+          "((5 > 4) == (3 < 4))",
+      },
+      {
+          "3 + 4 * 5 == 3 * 1 + 4 * 5",
+          "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))",
+      },
+  };
+
+  for (size_t i = 0; i < sizeof(test_cases) / sizeof(test_cases[0]); i++) {
+    TestCase test_case = test_cases[i];
+    Lexer *l = Lexer_new(String_from(test_case.input));
+    Parser *p = Parser_new(l);
+
+    Program *prog = parse_program(p);
+
+    check_parser_errors(p);
+
+    String *actual = program_string(prog);
+    String expected_out = String_from(test_case.expected);
+    assert(String_cmp(actual, &expected_out));
+
+    free_string(&expected_out);
+  }
+}
 
 void test_parsing_infix_expr(void) {
   TEST_STARTED;
@@ -137,32 +212,32 @@ void test_parsing_prefix_expr(void) {
   TEST_PASSED;
 }
 
-FN_TEST(test_parsing_int_expr, ({
-          const char *input = "5;";
+FN_TEST(test_parsing_int_expr, {
+  const char *input = "5;";
 
-          Lexer *l = Lexer_new(String_from(input));
-          Parser *p = Parser_new(l);
-          Program *program = parse_program(p);
+  Lexer *l = Lexer_new(String_from(input));
+  Parser *p = Parser_new(l);
+  Program *program = parse_program(p);
 
-          check_parser_errors(p);
-          assert(program->statements.size == 1);
+  check_parser_errors(p);
+  assert(program->statements.size == 1);
 
-          ExpressionStatement *expr_stmt =
-              (ExpressionStatement *)statements_get(&program->statements, 0);
-          IntExpr *int_expr = (IntExpr *)expr_stmt->expr;
-          assert(int_expr->value == 5);
-          String integer_token_literal =
-              int_expr->base.vt->token_literal((Node *)int_expr);
+  ExpressionStatement *expr_stmt =
+      (ExpressionStatement *)statements_get(&program->statements, 0);
+  IntExpr *int_expr = (IntExpr *)expr_stmt->expr;
+  assert(int_expr->value == 5);
+  String integer_token_literal =
+      int_expr->base.vt->token_literal((Node *)int_expr);
 
-          String five = STR_NEW("5");
-          assert(String_cmp(&integer_token_literal, &five));
+  String five = STR_NEW("5");
+  assert(String_cmp(&integer_token_literal, &five));
 
-          print_errors(p);
+  print_errors(p);
 
-          free_string(&integer_token_literal);
-          free_parser(p);
-          free_program(program);
-        }));
+  free_string(&integer_token_literal);
+  free_parser(p);
+  free_program(program);
+});
 
 void test_parsing_ident_expr(void) {
   TEST_STARTED;
@@ -343,6 +418,8 @@ void test_token_scanning(void) {
   for (size_t i = 0; i < (sizeof(expected) / sizeof(Token)); i++) {
     t = next_token(l);
     assert(expected[i].type == t.type);
+    printf("expected[i].literal = %s\n", expected[i].literal.chars);
+    printf("t.literal = %s\n", t.literal.chars);
     assert(String_cmp(&expected[i].literal, &t.literal));
     free_string(&t.literal);
     free_string(&expected[i].literal);
@@ -496,6 +573,7 @@ void check_parser_errors(Parser *p) {
     printf("parser error: %s\n", string_array_get(&p->errors, i).chars);
   }
   print_errors(p);
+
   assert(false);
 }
 void test_integer_literal(Expression *expr, int32_t value) {

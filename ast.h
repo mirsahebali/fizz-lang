@@ -19,12 +19,12 @@ struct Node {
   const NodeVT *vt;
 };
 
-// Expression Interface inherting Node
+// Expression Interface composing Node
 // vt._t = EXPRESSION
 // DO NOT DIRECTLY USE IT
 typedef Node Expression;
 
-// Statement Interface inherting Node
+// Statement Interface composing Node
 // vt._t = STATEMENT
 // DO NOT DIRECTLY USE IT
 typedef Node Statement;

@@ -79,10 +79,10 @@ TokenType lookup_ident(String *);
 // INFO: start the lexing by doing next_token and free_token first, so we can
 // get rid of the initial illegal character or we can also remove it by popping
 // the first element
-Token next_token(Lexer *);
+Token next_token(Lexer *self);
 
 void print_token(Token *);
 
-void free_token(Token *);
-void free_lexer(Lexer *);
+void free_token(Token *self);
+void free_lexer(Lexer *self);
 #endif // !LEXER_H
