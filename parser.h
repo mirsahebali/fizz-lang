@@ -46,7 +46,7 @@ typedef struct Program {
 } Program;
 
 String token_literal(Program *self);
-String *program_string(Program *self);
+String program_string(Program *self);
 
 typedef struct Parser Parser;
 

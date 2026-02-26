@@ -31,7 +31,7 @@ String ident_token_literal(const Node *self) {
 String ident_string(const Node *self) {
   Identifier *ident = (Identifier *)self;
 
-  return ident->value;
+  return String_clone(&ident->value);
 }
 
 void ident_destroy(Node *self) {
@@ -76,6 +76,7 @@ String let_statement_string(const Node *self) {
   if (let_st->value != NULL) {
     String lt_val = let_st->value->vt->string((Node *)let_st->value);
     value = String_clone(&lt_val);
+    free_string(&lt_val);
   } else {
     value = String_from("");
   }
@@ -83,21 +84,16 @@ String let_statement_string(const Node *self) {
   String eq_str = String_from(" = ");
   String spc_str = String_from(" ");
   String semicolon = String_from(";");
-  String *out = String_join(6, &let_st->token.literal, &spc_str, &name_str,
-                            &eq_str, &value, &semicolon);
+  String out = String_join(6, &let_st->token.literal, &spc_str, &name_str,
+                           &eq_str, &value, &semicolon);
 
-  String ret = String_clone(out);
-
-  free_string(out);
   free_string(&value);
   free_string(&name_str);
   free_string(&eq_str);
   free_string(&semicolon);
   free_string(&spc_str);
 
-  free(out);
-
-  return ret;
+  return out;
 }
 
 void let_statement_destroy(Node *self) {
@@ -224,15 +220,11 @@ String return_st_string(const Node *self) {
 
   ReturnStatement *ret_st = (ReturnStatement *)self;
 
-  String *out = String_join(
+  String out = String_join(
       4, ret_st->base.vt->token_literal((Node *)ret_st), String_from(" "),
       ret_st->value->vt->string(ret_st->value), String_from(";"));
 
-  String ret = String_clone(out);
-  free_string(out);
-  free(out);
-
-  return ret;
+  return out;
 }
 void return_st_destroy(Node *self) {
   assert(self != NULL);
@@ -263,8 +255,10 @@ String expr_st_token_literal(const Node *self) {
 }
 String expr_st_string(const Node *self) {
   assert(self != NULL);
+  ExpressionStatement *expr_st = (ExpressionStatement *)self;
+  String expr_string = expr_st->expr->vt->string((Node *)expr_st->expr);
 
-  return self->vt->_t == EXPRESSION ? self->vt->string(self) : String_from("");
+  return expr_string;
 }
 
 void expr_st_destroy(Node *self) {
@@ -297,15 +291,13 @@ String prefix_expr_string(const Node *self) {
   assert(self != NULL);
 
   PrefixExpression *prefix_expr = (PrefixExpression *)self;
-  String right_expr_str = (prefix_expr->right->vt->string(prefix_expr->right));
+  String right_expr_str =
+      prefix_expr->right->vt->string((Node *)prefix_expr->right);
   String left_paren = STR_NEW("(");
   String right_paren = STR_NEW(")");
-  String *out_str = String_join(4, &left_paren, &prefix_expr->op,
-                                &right_expr_str, &right_paren);
+  String out = String_join(4, &left_paren, &prefix_expr->op, &right_expr_str,
+                           &right_paren);
 
-  String out = String_clone(out_str);
-
-  free_string(out_str);
   free_string(&right_expr_str);
 
   return out;
@@ -345,14 +337,15 @@ String infix_expr_string(const Node *self) {
   InfixExpression *infix_expr = (InfixExpression *)self;
   String l_paren = STR_NEW("(");
   String r_paren = STR_NEW(")");
+  String spc = STR_NEW(" ");
   String left_str = infix_expr->left->vt->string((Node *)infix_expr->left);
   String right_str = infix_expr->right->vt->string((Node *)infix_expr->right);
-  String *out_str = String_join(5, &l_paren, &left_str, &infix_expr->op,
-                                &right_str, &r_paren);
+  String out_str = String_join(7, &l_paren, &left_str, &spc, &infix_expr->op,
+                               &spc, &right_str, &r_paren);
 
-  String out = String_clone(out_str);
-  free_string(out_str);
-  return out;
+  free_string(&left_str);
+  free_string(&right_str);
+  return out_str;
 }
 void infix_expr_destroy(Node *self) {
   InfixExpression *infix_expr = (InfixExpression *)self;

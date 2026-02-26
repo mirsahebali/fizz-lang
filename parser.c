@@ -112,20 +112,19 @@ String token_literal(Program *p) {
   return String_from("");
 }
 
-String *program_string(Program *self) {
+String program_string(Program *self) {
   StringArray arr = string_array_init(4);
-  String *out = NULL;
 
   for (int32_t i = 0; i < self->statements.size; i++) {
     Statement *st = statements_get(&self->statements, i);
+    if (st == NULL)
+      return STR_NULL;
+
     String str = st->vt->string((Node *)st);
     string_array_push(&arr, str);
-    free_string(&str);
   }
 
-  String sep = String_from("");
-  out = string_array_join(&arr, sep);
-  free_string(&sep);
+  String out = string_array_join(&arr, STR_NEW(" "));
   free_string_array(&arr);
 
   return out;
@@ -160,6 +159,7 @@ Parser *Parser_new(Lexer *l) {
   register_prefix(p, TOKEN_MINUS, (PrefixParseFn)parse_prefix_expression);
   register_prefix(p, TOKEN_PLUS, (PrefixParseFn)parse_prefix_expression);
 
+  register_infix(p, TOKEN_IDENT, (InfixParseFn)parse_infix_expression);
   register_infix(p, TOKEN_INT, (InfixParseFn)parse_infix_expression);
   register_infix(p, TOKEN_PLUS, (InfixParseFn)parse_infix_expression);
   register_infix(p, TOKEN_MINUS, (InfixParseFn)parse_infix_expression);
@@ -393,8 +393,12 @@ InfixExpression *parse_infix_expression(Parser *self, Expression *left) {
   Precedence prec = curr_precedence(self);
 
   parser_next_token(self);
-
+  // String plus = STR_NEW("+");
+  // if (String_cmp(&infix_new->op, &plus)) {
+  //   infix_new->right = parse_expression(self, prec - 1);
+  // } else {
   infix_new->right = parse_expression(self, prec);
+  // }
 
   return infix_new;
 }
@@ -428,11 +432,10 @@ IntExpr *parse_int_expr(Parser *self) {
   int32_t value;
   bool is_success = String_to_int(&self->curr_token.literal, &value);
   if (!is_success) {
-    String *error_str = String_join(
+    String error_str = String_join(
         2, String_from("ERROR: converting string to int for value: "),
         &self->curr_token.literal);
-    string_array_push(&self->errors, String_clone(error_str));
-    free_string(error_str);
+    string_array_push(&self->errors, error_str);
     return NULL;
   }
   IntExpr *int_expr = int_expr_new(value);

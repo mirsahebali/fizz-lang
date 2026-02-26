@@ -104,7 +104,7 @@ void test_operator_precedence_parsing(void) {
       },
       {
           "a + b / c",
-          "((a + b) / c)",
+          "(a + (b / c))",
       },
       {
           "a + b * c + d / e - f",
@@ -112,7 +112,7 @@ void test_operator_precedence_parsing(void) {
       },
       {
           "3 + 4; -5 * 5",
-          "(3 + 4)((-5) * 5)",
+          "(3 + 4) ((-5) * 5)",
       },
       {
           "5 > 4 == 3 < 4",
@@ -133,11 +133,18 @@ void test_operator_precedence_parsing(void) {
 
     check_parser_errors(p);
 
-    String *actual = program_string(prog);
+    String actual = program_string(prog);
     String expected_out = String_from(test_case.expected);
-    assert(String_cmp(actual, &expected_out));
+    if (!String_cmp(&actual, &expected_out)) {
+      printf("actual->chars = %s\n", actual.chars);
+      printf("expected_out.chars = %s\n", expected_out.chars);
+      assert(String_cmp(&actual, &expected_out));
+    }
 
+    free_string(&actual);
     free_string(&expected_out);
+    free_program(prog);
+    free_parser(p);
   }
 }
 
@@ -284,12 +291,11 @@ void test_string_parser(void) {
   statements_push(&statements, (Statement *)lt_st);
   Program prog = (Program){statements};
 
-  String *actual = program_string(&prog);
+  String actual = program_string(&prog);
   String expected = STR_NEW("let myVar = anotherVar;");
 
-  assert(String_cmp(actual, &expected));
-  free_string(actual);
-  free(actual);
+  assert(String_cmp(&actual, &expected));
+  free_string(&actual);
   free_statements(&statements);
 
   TEST_PASSED;
