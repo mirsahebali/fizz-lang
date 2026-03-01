@@ -574,10 +574,7 @@ void test_let_statements(void) {
 
   Program *program = parse_program(p);
 
-  if (p->errors.size != 0) {
-    print_errors(p);
-    assert(false);
-  }
+  check_parser_errors(p);
   assert(statements_size(&program->statements) == 3);
 
   assert(program != NULL);

@@ -260,7 +260,9 @@ void ident_destroy(Node *self) {
   free_string(&ident->value);
   free(self);
 
+#ifdef DEBUG
   printf("Identifier destroyed\n");
+#endif
 }
 
 LetStatement *let_statement_new(Token token, Identifier *name,
@@ -285,26 +287,16 @@ String let_statement_token_literal(const Node *self) {
 String let_statement_string(const Node *self) {
   LetStatement *let_st = (LetStatement *)self;
 
-  String value;
-  if (let_st->value != NULL) {
-    String lt_val = let_st->value->vt->string((Node *)let_st->value);
-    value = String_clone(&lt_val);
-    free_string(&lt_val);
-  } else {
-    value = String_from("");
-  }
+  String value = let_st->value->vt->string((Node *)let_st->value);
   String name_str = let_st->name->base.vt->token_literal((Node *)let_st->name);
-  String eq_str = String_from(" = ");
-  String spc_str = String_from(" ");
-  String semicolon = String_from(";");
+  String eq_str = STR_NEW(" = ");
+  String spc_str = STR_NEW(" ");
+  String semicolon = STR_NEW(";");
   String out = String_join(6, &let_st->token.literal, &spc_str, &name_str,
                            &eq_str, &value, &semicolon);
 
   free_string(&value);
   free_string(&name_str);
-  free_string(&eq_str);
-  free_string(&semicolon);
-  free_string(&spc_str);
 
   return out;
 }
@@ -322,7 +314,9 @@ void let_statement_destroy(Node *self) {
     let_st->value->vt->destroy((Node *)let_st->value);
   }
 
+#ifdef DEBUG
   printf("LetStatement destroyed\n");
+#endif
 
   free(self);
 }
@@ -374,7 +368,9 @@ void operator_expr_destroy(Node *self) {
   free_token(&op_expr->op);
   free(self);
 
+#ifdef DEBUG
   printf("OprExpr destroyed \n");
+#endif
 }
 
 IntExpr *int_expr_new(const Token t, const int value) {
@@ -405,7 +401,10 @@ void int_expr_destroy(Node *self) {
     return;
   IntExpr *int_expr = (IntExpr *)self;
   free_token(&int_expr->token);
+
+#ifdef DEBUG
   printf("IntExpr Destroyed\n");
+#endif
   free(self);
 }
 
@@ -452,7 +451,10 @@ void return_st_destroy(Node *self) {
   }
   free_token(&ret_st->token);
   free(self);
+
+#ifdef DEBUG
   printf("Return Statement destroyed\n");
+#endif
 }
 
 ExpressionStatement *expr_st_new(const Token t, const Expression *expr) {
@@ -472,6 +474,9 @@ String expr_st_token_literal(const Node *self) {
 String expr_st_string(const Node *self) {
   assert(self != NULL);
   ExpressionStatement *expr_st = (ExpressionStatement *)self;
+
+  assert(expr_st->expr != NULL);
+
   String expr_string = expr_st->expr->vt->string((Node *)expr_st->expr);
 
   return expr_string;

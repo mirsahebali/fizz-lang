@@ -247,7 +247,6 @@ LetStatement *parse_let_statement(Parser *self) {
       let_statement_new(Token_clone(&self->curr_token), NULL, NULL);
 
   if (!expect_peek(self, TOKEN_IDENT)) {
-
     let_st->base.vt->destroy((Node *)let_st);
     return NULL;
   }
@@ -265,7 +264,7 @@ LetStatement *parse_let_statement(Parser *self) {
 
   let_st->value = parse_expression(self, PREC_LOWEST);
 
-  while (!is_parser_curr_token(self, TOKEN_SEMICOLON)) {
+  if (is_parser_peek_token(self, TOKEN_SEMICOLON)) {
     parser_next_token(self);
   }
 
@@ -291,7 +290,7 @@ ReturnStatement *parse_return_statement(Parser *self) {
 
   ret_st->value = parse_expression(self, PREC_LOWEST);
 
-  while (!is_parser_curr_token(self, TOKEN_SEMICOLON)) {
+  if (is_parser_curr_token(self, TOKEN_SEMICOLON)) {
     parser_next_token(self);
   }
 

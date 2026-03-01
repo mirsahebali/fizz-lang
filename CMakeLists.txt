@@ -34,8 +34,14 @@ target_compile_options(${PROJECT_NAME}-debug PUBLIC ${ASAN_CFLAGS})
 add_executable(${PROJECT_NAME}-tests tests.c)
 target_compile_options(${PROJECT_NAME}-tests PUBLIC ${ASAN_CFLAGS})
 
+add_executable(${PROJECT_NAME}-rppl rppl.c)
+target_compile_options(${PROJECT_NAME}-rppl PUBLIC ${ASAN_CFLAGS})
+
 target_link_libraries(${PROJECT_NAME}-debug PUBLIC ${PROJECT_NAME}-coredebug)
 target_link_options(${PROJECT_NAME}-debug PUBLIC ${ASAN_CFLAGS})
+
 target_link_libraries(${PROJECT_NAME}-tests PUBLIC ${PROJECT_NAME}-coredebug)
 target_link_options(${PROJECT_NAME}-tests PUBLIC ${ASAN_CFLAGS})
 
+target_link_libraries(${PROJECT_NAME}-rppl PUBLIC ${PROJECT_NAME}-coredebug)
+target_link_options(${PROJECT_NAME}-rppl PUBLIC ${ASAN_CFLAGS})
