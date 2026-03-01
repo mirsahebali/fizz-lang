@@ -1,6 +1,8 @@
 #include <assert.h>
 #include <math.h>
+#include <stdarg.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,6 +18,38 @@
 
 #define CSTRING_IMPLEMENTATION
 #include <cstring.h/cstring.h>
+
+#define CSTR 0
+#define REF_STR 1
+#define OWNED_STR 2
+
+#define EVAL_PRINT(specifier, left, right)                                     \
+                                                                               \
+  printf("Assertion failed at: %s %s:%d\n", __FUNCTION__, __FILE__, __LINE__); \
+  printf("left: ");                                                            \
+  printf("%s = " specifier, #left, left);                                      \
+  printf("\n");                                                                \
+  printf("right: ");                                                           \
+  printf("%s = " specifier, #right, right);                                    \
+  printf("\n");
+
+#define ASSERT_EVAL(specifier, left, right)                                    \
+  {                                                                            \
+    EVAL_PRINT(specifier, left, right);                                        \
+    assert(false);                                                             \
+  }
+
+#define ASSERT_EQ(specifier, left, right)                                      \
+  do {                                                                         \
+    if (left != right)                                                         \
+      ASSERT_EVAL(specifier, left, right)                                      \
+  } while (0)
+
+#define ASSERT_NEQ(specifier, left, right)                                     \
+  do {                                                                         \
+    if (left == right)                                                         \
+      ASSERT_EVAL(specifier, left, right)                                      \
+  } while (0)
 
 #define TEST_STARTED printf("`%s` started\n", __FUNCTION__)
 #define TEST_PASSED printf("`%s` passed\n", __FUNCTION__)
@@ -41,6 +75,9 @@ void test_parsing_int_expr(void);
 void test_parsing_prefix_expr(void);
 void test_parsing_infix_expr(void);
 void test_operator_precedence_parsing(void);
+void test_if_expression_parsing(void);
+void test_fn_expression_parsing(void);
+void test_call_expression_parsing(void);
 
 int main() {
 
@@ -54,8 +91,218 @@ int main() {
   test_parsing_prefix_expr();
   test_parsing_infix_expr();
   test_operator_precedence_parsing();
+  test_if_expression_parsing();
+  test_fn_expression_parsing();
+  test_call_expression_parsing();
 
   return 0;
+}
+
+typedef struct {
+  const char *input;
+  int argument_num;
+  char *ident_name;
+  StringArray expr_string_list;
+
+} CallExprTestCase;
+
+void test_call_expression_parsing(void) {
+  TEST_STARTED;
+
+  CallExprTestCase test_cases[3] = {
+      {
+          .input = "add(a + b, c / d, x);",
+          .argument_num = 3,
+          .ident_name = "add",
+          .expr_string_list =
+              String_array_from_cstr(3, "(a + b)", "(c / d)", "x"),
+      },
+
+      {.input = "sub();",
+       .argument_num = 0,
+       .ident_name = "sub",
+       .expr_string_list = string_array_init(0)},
+
+      {
+          .input = "mult(a, add(x - y));",
+          .argument_num = 2,
+          .ident_name = "mult",
+          .expr_string_list = String_array_from_cstr(2, "a", "add((x - y))"),
+      },
+  };
+
+  for (int i = 0; i < 3; i++) {
+    CallExprTestCase test_case = test_cases[i];
+    Parser *p = Parser_new(Lexer_new(String_from(test_case.input)));
+    Program *program = parse_program(p);
+
+    check_parser_errors(p);
+
+    ExpressionStatement *expr_st =
+        (ExpressionStatement *)statements_get(&program->statements, 0);
+
+    CallExpression *call_expr = (CallExpression *)expr_st->expr;
+    ASSERT_EQ("%d", call_expr->arguments.size, test_case.argument_num);
+    Identifier *ident = (Identifier *)call_expr->function;
+    String expected = STR_NEW(test_case.ident_name);
+
+    assert(String_cmp(&ident->value, &expected));
+
+    for (int i = 0; i < call_expr->arguments.size; i++) {
+      InfixExpression *expr =
+          (InfixExpression *)expressions_get(&call_expr->arguments, i);
+      String infix_str = expr->base.vt->string((Node *)expr);
+      String expected_str = string_array_get(&test_case.expr_string_list, i);
+
+      assert(String_cmp(&infix_str, &expected_str));
+
+      free_string(&infix_str);
+      free_string(&expected_str);
+    }
+
+    free_parser(p);
+    free_program(program);
+  }
+
+  for (int i = 0; i < 3; i++) {
+    CallExprTestCase test_case = test_cases[i];
+    free_string_array(&test_case.expr_string_list);
+  }
+
+  TEST_PASSED;
+}
+
+typedef struct {
+  char *input;
+  int parameters;
+  StringArray ident_list;
+} FnExprTestCase;
+
+void test_fn_expression_parsing(void) {
+  TEST_STARTED;
+  FnExprTestCase inputs[] = {
+      {"fn(x, y){ return x > y;}", 2, String_array_from_cstr(2, "x", "y")},
+      {"fn(){ y }", 0, string_array_init(0)},
+      {"fn(x, y, z){}", 3, String_array_from_cstr(3, "x", "y", "z")}};
+
+  for (size_t i = 0; i < (sizeof(inputs) / sizeof(inputs[0])); i++) {
+    FnExprTestCase input = inputs[i];
+    Parser *p = Parser_new(Lexer_new(String_from(input.input)));
+    Program *program = parse_program(p);
+
+    printf("input = %s\n", input.input);
+    check_parser_errors(p);
+
+    ExpressionStatement *expr_st =
+        (ExpressionStatement *)statements_get(&program->statements, 0);
+
+    ASSERT_NEQ("%p", expr_st, NULL);
+
+    FnExpression *fn_expr = (FnExpression *)expr_st->expr;
+
+    ASSERT_NEQ("%p", fn_expr, NULL);
+
+    ASSERT_EQ("%d", fn_expr->parameters.size, input.parameters);
+
+    for (int i = 0; i < input.parameters; i++) {
+      String expected_param = string_array_get(&input.ident_list, i);
+      String actual_param = (identifiers_get(&fn_expr->parameters, i))->value;
+      assert(String_cmp(&expected_param, &actual_param));
+      free_string(&expected_param);
+    }
+
+    free_program(program);
+    free_parser(p);
+  }
+
+  for (size_t i = 0; i < (sizeof(inputs) / sizeof(inputs[0])); i++) {
+    free_string_array(&inputs[i].ident_list);
+  }
+  TEST_PASSED;
+}
+
+void test_if_expression_parsing(void) {
+  TEST_STARTED;
+  const char *inputs[] = {"if(x < y){ x }", "if (x < y) { y } else { x }"};
+
+  const char *input = inputs[0];
+  Lexer *l = Lexer_new(String_from(input));
+  Parser *p = Parser_new(l);
+
+  Program *program = parse_program(p);
+
+  check_parser_errors(p);
+
+  ExpressionStatement *expression_statement =
+      (ExpressionStatement *)statements_get(&program->statements, 0);
+
+  ASSERT_NEQ("%p", expression_statement, NULL);
+
+  IfExpression *if_expr = (IfExpression *)expression_statement->expr;
+
+  ASSERT_NEQ("%p", if_expr, NULL);
+  ASSERT_NEQ("%p", if_expr->condition, NULL);
+  ASSERT_NEQ("%p", if_expr->consequence, NULL);
+
+  InfixExpression *infix_expr = (InfixExpression *)if_expr->condition;
+  ASSERT_NEQ("%p", (Identifier *)infix_expr->left, NULL);
+  ASSERT_NEQ("%p", (Identifier *)infix_expr->right, NULL);
+
+  ASSERT_EQ("%c", ((Identifier *)infix_expr->left)->value.chars[0], 'x');
+  ASSERT_EQ("%c", ((Identifier *)infix_expr->right)->value.chars[0], 'y');
+
+  ExpressionStatement *expr_st = (ExpressionStatement *)statements_get(
+      &if_expr->consequence->statements, 0);
+  ASSERT_NEQ("%p", expr_st, NULL);
+  ASSERT_NEQ("%p", expr_st->expr, NULL);
+  ASSERT_EQ("%c", ((Identifier *)expr_st->expr)->value.chars[0], 'x');
+
+  free_program(program);
+  free_parser(p);
+
+  input = inputs[1];
+  l = Lexer_new(String_from(input));
+  p = Parser_new(l);
+
+  program = parse_program(p);
+
+  check_parser_errors(p);
+
+  expression_statement =
+      (ExpressionStatement *)statements_get(&program->statements, 0);
+
+  ASSERT_NEQ("%p", expression_statement, NULL);
+
+  if_expr = (IfExpression *)expression_statement->expr;
+
+  ASSERT_NEQ("%p", if_expr, NULL);
+  ASSERT_NEQ("%p", if_expr->condition, NULL);
+  ASSERT_NEQ("%p", if_expr->consequence, NULL);
+  ASSERT_NEQ("%p", if_expr->alternative, NULL);
+
+  infix_expr = (InfixExpression *)if_expr->condition;
+  ASSERT_NEQ("%p", (Identifier *)infix_expr->left, NULL);
+  ASSERT_NEQ("%p", (Identifier *)infix_expr->right, NULL);
+
+  ASSERT_EQ("%c", ((Identifier *)infix_expr->left)->value.chars[0], 'x');
+  ASSERT_EQ("%c", ((Identifier *)infix_expr->right)->value.chars[0], 'y');
+
+  expr_st = (ExpressionStatement *)statements_get(
+      &if_expr->consequence->statements, 0);
+  ASSERT_NEQ("%p", expr_st, NULL);
+  ASSERT_NEQ("%p", expr_st->expr, NULL);
+  ASSERT_EQ("%c", ((Identifier *)expr_st->expr)->value.chars[0], 'y');
+
+  ExpressionStatement *expr_st_alt = (ExpressionStatement *)statements_get(
+      &if_expr->alternative->statements, 0);
+  ASSERT_NEQ("%p", expr_st_alt, NULL);
+  ASSERT_NEQ("%p", expr_st_alt->expr, NULL);
+  ASSERT_EQ("%c", ((Identifier *)expr_st_alt->expr)->value.chars[0], 'x');
+
+  free_program(program);
+  free_parser(p);
+
+  TEST_PASSED;
 }
 
 void test_integer_literal(Expression *expr, int32_t value);
@@ -73,55 +320,30 @@ typedef struct {
   char *expected;
 } TestCase;
 void test_operator_precedence_parsing(void) {
+  TEST_STARTED;
   TestCase test_cases[] = {
-      {
-          "-a * b",
-          "((-a) * b)",
-      },
-      {
-          "-!a",
-          "(-(!a))",
-      },
-      {
-          "!-a",
-          "(!(-a))",
-      },
-      {
-          "a + b + c",
-          "((a + b) + c)",
-      },
-      {
-          "a + b - c",
-          "((a + b) - c)",
-      },
-      {
-          "a * b * c",
-          "((a * b) * c)",
-      },
-      {
-          "a * b / c",
-          "((a * b) / c)",
-      },
-      {
-          "a + b / c",
-          "(a + (b / c))",
-      },
-      {
-          "a + b * c + d / e - f",
-          "(((a + (b * c)) + (d / e)) - f)",
-      },
-      {
-          "3 + 4; -5 * 5",
-          "(3 + 4) ((-5) * 5)",
-      },
-      {
-          "5 > 4 == 3 < 4",
-          "((5 > 4) == (3 < 4))",
-      },
-      {
-          "3 + 4 * 5 == 3 * 1 + 4 * 5",
-          "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))",
-      },
+
+      {"(a - b) * c", "((a - b) * c)"},
+      {"!(true == true)", "(!(true == true))"},
+      {"-(5 + 8)", "(-(5 + 8))"},
+      {"1 + (2 + 3) + 4", "((1 + (2 + 3)) + 4)"},
+      {"(a + b) / c", "((a + b) / c)"},
+
+      {"true", "true"},
+      {"false", "false"},
+      {"-a * b", "((-a) * b)"},
+      {"-!a", "(-(!a))"},
+      {"!-a", "(!(-a))"},
+      {"a + b + c", "((a + b) + c)"},
+      {"a + b - c", "((a + b) - c)"},
+      {"a * b * c", "((a * b) * c)"},
+      {"a * b / c", "((a * b) / c)"},
+      {"a + b / c", "(a + (b / c))"},
+      {"a + b * c + d / e - f", "(((a + (b * c)) + (d / e)) - f)"},
+      {"3 + 4; -5 * 5", "(3 + 4) ((-5) * 5)"},
+      {"5 > 4 == 3 < 4", "((5 > 4) == (3 < 4))"},
+      {"3 + 4 * 5 == 3 * 1 + 4 * 5", "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))"},
+
   };
 
   for (size_t i = 0; i < sizeof(test_cases) / sizeof(test_cases[0]); i++) {
@@ -146,6 +368,7 @@ void test_operator_precedence_parsing(void) {
     free_program(prog);
     free_parser(p);
   }
+  TEST_FAILED;
 }
 
 void test_parsing_infix_expr(void) {
@@ -576,7 +799,8 @@ void check_parser_errors(Parser *p) {
 
   printf("Parser has %d errors\n", errors->size);
   for (int i = 0; i < errors->size; i++) {
-    printf("parser error: %s\n", string_array_get(&p->errors, i).chars);
+
+    printf("parser error: %s\n", p->errors.data[i].chars);
   }
   print_errors(p);
 
