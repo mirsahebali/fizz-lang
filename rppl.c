@@ -22,6 +22,12 @@ int main(void) {
 
     printf("%s\n", out.chars);
 
+    if (p->errors.size != 0) {
+      print_errors(p);
+      exit(0);
+    }
+
+    free_string(&out);
     free_program(prog);
     free_parser(p);
   }

@@ -247,7 +247,7 @@ LetStatement *parse_let_statement(Parser *self) {
       let_statement_new(Token_clone(&self->curr_token), NULL, NULL);
 
   if (!expect_peek(self, TOKEN_IDENT)) {
-    let_st->base.vt->destroy((Node *)let_st);
+    push_error(self, String_from("Parser error: Expected TOKEN_IDENT"));
     return NULL;
   }
 
@@ -255,7 +255,7 @@ LetStatement *parse_let_statement(Parser *self) {
                            String_clone(&self->curr_token.literal));
 
   if (!expect_peek(self, TOKEN_ASSIGN)) {
-    printf("Parse error: no equal sign\n");
+    push_error(self, String_from("Parse error: expected TOKEN_ASSIGN"));
 
     return NULL;
   }
@@ -276,7 +276,9 @@ Identifier *parse_identifier(Parser *self) {
   Identifier *ident = ident_new(Token_clone(&self->curr_token),
                                 String_clone(&self->curr_token.literal));
 
-  assert(ident != NULL);
+  if (ident == NULL) {
+    return NULL;
+  }
 
   return ident;
 }
