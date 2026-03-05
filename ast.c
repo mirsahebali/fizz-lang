@@ -433,9 +433,14 @@ String return_st_string(const Node *self) {
 
   ReturnStatement *ret_st = (ReturnStatement *)self;
 
-  String out = String_join(
-      4, ret_st->base.vt->token_literal((Node *)ret_st), String_from(" "),
-      ret_st->value->vt->string(ret_st->value), String_from(";"));
+  String return_st_token = ret_st->base.vt->token_literal((Node *)ret_st);
+  String spc = STR_NEW(" ");
+  String ret_val = ret_st->value->vt->string(ret_st->value);
+  String semi_colon = STR_NEW(";");
+
+  String out = String_join(4, &return_st_token, &spc, &ret_val, &semi_colon);
+  free_string(&return_st_token);
+  free_string(&ret_val);
 
   return out;
 }
@@ -671,11 +676,14 @@ String if_expr_string(const Node *self) {
 
   String if_str = STR_NEW("if");
   String empty_str = STR_NEW(" ");
+  String l_brace = STR_NEW("{");
+  String r_brace = STR_NEW("}");
   String cond_str = if_expr->condition->vt->string(if_expr->condition);
   String cons_str =
       if_expr->consequence->base.vt->string((Node *)if_expr->consequence);
 
-  String out = String_join(4, &if_str, &cond_str, &empty_str, &cons_str);
+  String out = String_join(6, &if_str, &cond_str, &empty_str, &l_brace,
+                           &cons_str, &r_brace);
 
   if (if_expr->alternative != NULL) {
 
@@ -686,7 +694,8 @@ String if_expr_string(const Node *self) {
     String temp = String_clone(&out);
     free_string(&out);
 
-    out = String_join(3, &temp, &else_str, &alt_str);
+    out = String_join(7, &temp, &else_str, &l_brace, &spc, &alt_str, &spc,
+                      &r_brace);
     free_string(&alt_str);
   }
 
@@ -729,20 +738,21 @@ String fn_expr_string(const Node *self) {
   String r_paren = STR_NEW(")");
   String l_brace = STR_NEW("{");
   String r_brace = STR_NEW("}");
+  String spc = STR_NEW(" ");
   String comma = STR_NEW(", ");
   // getting the identifiers out
   StringArray params_arr = string_array_init(fn_expr->parameters.size);
   for (int i = 0; i < fn_expr->parameters.size; i++) {
     Identifier *ident = identifiers_get(&fn_expr->parameters, i);
-    String val = ident->value;
+    String val = String_clone(&ident->value);
     string_array_push(&params_arr, val);
   }
 
   String params_str = string_array_join(&params_arr, comma);
   String block_st_str = fn_expr->body->base.vt->string((Node *)fn_expr->body);
 
-  String out = String_join(7, &fn_str, &l_paren, &params_str, &r_paren,
-                           &l_brace, &block_st_str, &r_brace);
+  String out = String_join(9, &fn_str, &l_paren, &params_str, &r_paren,
+                           &l_brace, &spc, &block_st_str, &spc, &r_brace);
 
   free_string(&params_str);
   free_string(&block_st_str);

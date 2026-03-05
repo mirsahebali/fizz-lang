@@ -292,7 +292,7 @@ ReturnStatement *parse_return_statement(Parser *self) {
 
   ret_st->value = parse_expression(self, PREC_LOWEST);
 
-  if (is_parser_curr_token(self, TOKEN_SEMICOLON)) {
+  if (is_parser_peek_token(self, TOKEN_SEMICOLON)) {
     parser_next_token(self);
   }
 
